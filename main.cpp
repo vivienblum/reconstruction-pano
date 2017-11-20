@@ -69,23 +69,28 @@ vector<Point2i> FAST(Mat imageIn) {
 
 int main(int argc, char** argv){
 	
-	Mat imageIn = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
-	Mat imageOut = imread( argv[1], CV_LOAD_IMAGE_COLOR );
+	Mat imageIn1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
+	Mat imageIn2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
 
-	if(! imageIn.data ) {
+	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
+	Mat imageOut;
+
+	if(! imageIn1.data ) {
 		cout <<  "Could not open or find the image" << endl ;
 		return -1;
    	}
 	else {
 
-		vector<Point2i> v1 = FAST(imageIn);
+		vector<Point2i> v1 = FAST(imageIn1);
 
 		for(unsigned int i = 0; i < v1.size(); i++) {
-			circle(imageOut, v1[i], 3, Scalar(0,0,255));
+			circle(imageCorners, v1[i], 3, Scalar(0,0,255));
 		}
 
 		cout <<  "Nb points : " << v1.size() << endl;
 
+		hconcat(imageIn1, imageIn2, imageOut);
+		 
 		imshow( "Corners", imageOut );       
 
 		waitKey(0); 
