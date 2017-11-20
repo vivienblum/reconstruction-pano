@@ -5,13 +5,13 @@
 #define RAYON_FAST 3
 #define SEUIL 50
 #define TAILLE 16
-#define SEUIL_SQUARE 1
+#define SEUIL_SQUARE 2500
 #define DELTA_SQUARE 3
 
 using namespace std;
 using namespace cv;
 
-vector<Point2i> FAST(Mat imageIn) {
+vector<Point2i> MY_FAST(Mat imageIn) {
 	int parcourX [] = {-3,-3,-2,-1,0,1,2,3,3,3,2,1,0,-1,-2,-3};
     int parcourY [] = {0,1,2,3,3,3,2,1,0,-1,-2,-3,-3,-3,-2,-1};
 
@@ -91,9 +91,11 @@ int main(int argc, char** argv){
 		hconcat(imageIn1, imageIn2, imageOut);
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 
-		vector<Point2i> v1 = FAST(imageIn1);
+		vector<Point2i> v1 = MY_FAST(imageIn1);
+		// vector<Point2i> v1 = FAST(imageIn1, v1, 1, false);
 		cout <<  "Nb points : " << v1.size() << endl;
-		vector<Point2i> v2 = FAST(imageIn2);
+		vector<Point2i> v2  = MY_FAST(imageIn2);
+		// vector<Point2i> v2 = FAST(imageIn2, v2,1,false);
 
 		//On parcourt les points de contours de l'image 1
 		for(unsigned int i = 0; i < v1.size(); i++) {
@@ -110,7 +112,8 @@ int main(int argc, char** argv){
 				//On les compares
 				for( int x = 0; x < squareOriginal.rows; x++ ) {
 					for( int y = 0; y < squareOriginal.cols; y++ ) {
-						sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
+						// sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
+						sum += pow(squareOriginal.at<uchar>(x, y) - squareCompared.at<uchar>(x, y), 2);
 					}
 				}
 				if (sum < SEUIL_SQUARE) {
@@ -122,7 +125,7 @@ int main(int argc, char** argv){
 				}
 			}
 			if (matchFound) {
-				// cout <<  "Match: " << pointMatch << " Sum " << min <<endl;
+				cout <<  "Match: " << v1[i] << pointMatch << " Sum " << min <<endl;
 				 arrowedLine(imageOut, v1[i] , Point2i(decalage + pointMatch.x,  pointMatch.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
 			}
 			
