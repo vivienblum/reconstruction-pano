@@ -3,7 +3,7 @@
 #include <iostream>
 
 #define RAYON_FAST 3
-#define SEUIL 70
+#define SEUIL 60
 #define TAILLE 16
 
 using namespace std;
@@ -80,15 +80,16 @@ int main(int argc, char** argv){
 					}
 				}
 				if (cornerFound) {
-					circle(imageOut,Point2i(y,x),3,Scalar(0,0,255));
-					// cout <<  "Touché coulé" << endl ;
-					// return 0;
+					solution.push_back(Point2i(y,x));
+					circle(imageOut, solution.back(), 3, Scalar(0,0,255));
 
 				}
 
 				// 
 			}
 		}	
+
+		cout <<  "nb points : " << solution.size() << endl ;
 
 		imshow( "Corners", imageOut );       
 
