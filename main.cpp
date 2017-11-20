@@ -5,6 +5,8 @@
 #define RAYON_FAST 3
 #define SEUIL 60
 #define TAILLE 16
+#define SEUIL_SQUARE 100
+#define DELTA_SQUARE 3
 
 using namespace std;
 using namespace cv;
@@ -74,8 +76,10 @@ int main(int argc, char** argv){
 
 	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
 
-	Mat imageOut = Mat::zeros(Size(imageIn1.cols + imageIn2.cols, imageIn1.rows), imageCorners.type());
-	Mat imageOut2;
+	int width = imageIn1.cols + imageIn2.cols;
+	int decalage = imageIn1.cols;
+
+	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
 
 	if(! imageIn1.data ) {
 		cout <<  "Could not open or find the image" << endl ;
@@ -88,15 +92,36 @@ int main(int argc, char** argv){
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 
 		vector<Point2i> v1 = FAST(imageIn1);
+		cout <<  "Nb points : " << v1.size() << endl;
 		vector<Point2i> v2 = FAST(imageIn2);
 
 		for(unsigned int i = 0; i < v1.size(); i++) {
 			circle(imageOut, v1[i], 3, Scalar(0, 0, 255));
+
+			Mat squareOriginal = imageIn1( Rect(v1[i].x, v1[i].y, DELTA_SQUARE, DELTA_SQUARE) );
+
+			for(unsigned int j = 0; j < v2.size(); j++) {
+				Mat squareCompared = imageIn2( Rect(v2[j].x, v2[j].y, DELTA_SQUARE, DELTA_SQUARE) );
+				int sum = 0;
+				for( int x = 0; x < squareOriginal.rows; x++ ) {
+					for( int y = 0; y < squareOriginal.cols; y++ ) {
+						sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
+					}
+				}
+				if (sum < SEUIL_SQUARE) {
+					cout <<  v1[i] << sum << endl;
+				}
+				cout <<  "Sum: " << sum << endl;
+			}
+			
 		}
 
-		cout <<  "Nb points : " << v1.size() << endl;
+		for(unsigned int i = 0; i < v2.size(); i++) {
+			circle(imageOut, Point2i(decalage + v2[i].x,  v2[i].y), 3, Scalar(0, 0, 255));
+		}
 
 		imshow( "Corners", imageOut );       
+		// imshow( "Corners", roi );       
 
 		waitKey(0); 
 
