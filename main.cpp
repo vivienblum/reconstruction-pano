@@ -95,23 +95,35 @@ int main(int argc, char** argv){
 		cout <<  "Nb points : " << v1.size() << endl;
 		vector<Point2i> v2 = FAST(imageIn2);
 
+		//On parcourt les points de contours de l'image 1
 		for(unsigned int i = 0; i < v1.size(); i++) {
 			circle(imageOut, v1[i], 3, Scalar(0, 0, 255));
 
 			Mat squareOriginal = imageIn1( Rect(v1[i].x, v1[i].y, DELTA_SQUARE, DELTA_SQUARE) );
-
+			Point2i pointMatch;
+			int min = SEUIL_SQUARE;
+			bool matchFound = false;
+			//On parcourt les points de contours de l'image 2
 			for(unsigned int j = 0; j < v2.size(); j++) {
 				Mat squareCompared = imageIn2( Rect(v2[j].x, v2[j].y, DELTA_SQUARE, DELTA_SQUARE) );
 				int sum = 0;
+				//On les compares
 				for( int x = 0; x < squareOriginal.rows; x++ ) {
 					for( int y = 0; y < squareOriginal.cols; y++ ) {
 						sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
 					}
 				}
 				if (sum < SEUIL_SQUARE) {
-					cout <<  v1[i] << sum << endl;
+					if (sum < min) {
+						min = sum;
+						pointMatch = v2[j];
+						matchFound = true;
+					}
 				}
-				cout <<  "Sum: " << sum << endl;
+
+			}
+			if (matchFound) {
+				cout <<  "Match: " << pointMatch << " Sum " << min <<endl;
 			}
 			
 		}
