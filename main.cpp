@@ -3,9 +3,9 @@
 #include <iostream>
 
 #define RAYON_FAST 3
-#define SEUIL 60
+#define SEUIL 50
 #define TAILLE 16
-#define SEUIL_SQUARE 100
+#define SEUIL_SQUARE 1
 #define DELTA_SQUARE 3
 
 using namespace std;
@@ -120,10 +120,10 @@ int main(int argc, char** argv){
 						matchFound = true;
 					}
 				}
-
 			}
 			if (matchFound) {
-				cout <<  "Match: " << pointMatch << " Sum " << min <<endl;
+				// cout <<  "Match: " << pointMatch << " Sum " << min <<endl;
+				 arrowedLine(imageOut, v1[i] , Point2i(decalage + pointMatch.x,  pointMatch.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
 			}
 			
 		}
