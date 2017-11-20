@@ -73,7 +73,9 @@ int main(int argc, char** argv){
 	Mat imageIn2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
 
 	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
-	Mat imageOut;
+
+	Mat imageOut = Mat::zeros(Size(imageIn1.cols + imageIn2.cols, imageIn1.rows), imageCorners.type());
+	Mat imageOut2;
 
 	if(! imageIn1.data ) {
 		cout <<  "Could not open or find the image" << endl ;
@@ -81,16 +83,19 @@ int main(int argc, char** argv){
    	}
 	else {
 
+		//On crée un image contenant les 2 images
+		hconcat(imageIn1, imageIn2, imageOut);
+		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
+
 		vector<Point2i> v1 = FAST(imageIn1);
+		vector<Point2i> v2 = FAST(imageIn2);
 
 		for(unsigned int i = 0; i < v1.size(); i++) {
-			circle(imageCorners, v1[i], 3, Scalar(0,0,255));
+			circle(imageOut, v1[i], 3, Scalar(0, 0, 255));
 		}
 
 		cout <<  "Nb points : " << v1.size() << endl;
 
-		hconcat(imageIn1, imageIn2, imageOut);
-		 
 		imshow( "Corners", imageOut );       
 
 		waitKey(0); 
