@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <iostream>
 
-#define RAYON_FAST 3
-#define SEUIL 50
+#define RAYON_FAST 5
+#define SEUIL 70
 #define TAILLE 16
-#define SEUIL_SQUARE 1000
-#define DELTA_SQUARE 3
+#define SEUIL_SQUARE 1200
+#define DELTA_SQUARE 5
 
 using namespace std;
 using namespace cv;
@@ -68,33 +68,48 @@ vector<Point2i> MY_FAST(Mat imageIn) {
 	return solution;
 }
 
+float averageMat(Mat matrix) {
+	int sum = 0;
+	for( int x = 0; x < matrix.rows; x++ ) {
+		for( int y = 0; y < matrix.cols; y++ ) {
+			sum += matrix.at<uchar>(x, y);
+		}
+	}
+	return sum/(matrix.rows*matrix.cols);
+}
+
 Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Point2i> vCompared) {
+	// On récupère les voisins proche du points
 	Mat squareOriginal = imageIn1( Rect(pointOriginal.x, pointOriginal.y, DELTA_SQUARE, DELTA_SQUARE) );
+	// On récupère la moyenne de la matrice 
+	int mu1 = averageMat(squareOriginal);
+
 	Point2i pointMatch;
 	int min = SEUIL_SQUARE;
 	bool matchFound = false;
 	//On parcourt les points de contours de l'image 2
 	for(unsigned int j = 0; j < vCompared.size(); j++) {
 		Mat squareCompared = imageIn2( Rect(vCompared[j].x, vCompared[j].y, DELTA_SQUARE, DELTA_SQUARE) );
+		int mu2 = averageMat(squareCompared);
 		int sum = 0;
 		//On les compares
 		for( int x = 0; x < squareOriginal.rows; x++ ) {
 			for( int y = 0; y < squareOriginal.cols; y++ ) {
-				// sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
-				sum += pow(squareOriginal.at<uchar>(x, y) - squareCompared.at<uchar>(x, y), 2);
+				sum += pow((squareOriginal.at<uchar>(x, y) - mu1) - (squareCompared.at<uchar>(x, y) - mu2), 2);
 			}
 		}
-		if (sum < SEUIL_SQUARE) {
-			if (sum < min) {
-				min = sum;
-				pointMatch = vCompared[j];
-				matchFound = true;
-			}
+		// Si on trouve 
+		if (sum < SEUIL_SQUARE && sum < min) {
+			min = sum;
+			pointMatch = vCompared[j];
+			matchFound = true;
 		}
 	}
 	if (matchFound) {
+		// On retourne le point trouvé
 		return pointMatch;
 	}
+	// On retourne un point NULL
 	return Point2i(0, 0);
 }
 
@@ -121,65 +136,32 @@ int main(int argc, char** argv){
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 
 		vector<Point2i> v1 = MY_FAST(imageIn1);
-		// vector<Point2i> v1 = FAST(imageIn1, v1, 1, false);
-		cout <<  "Nb points : " << v1.size() << endl;
+		cout <<  "Nb points left : " << v1.size() << endl;
 		vector<Point2i> v2  = MY_FAST(imageIn2);
-		// vector<Point2i> v2 = FAST(imageIn2, v2,1,false);
+		cout <<  "Nb points right : " << v2.size() << endl;
 
-		//On parcourt les points de contours de l'image 1
 		for(unsigned int i = 0; i < v1.size(); i++) {
-			circle(imageOut, v1[i], 3, Scalar(0, 0, 255));
 
+			// On cherche le point qui match
 			Point2i point = pointMatch(imageIn1, imageIn2, v1[i], v2);
 			if (point.x != 0 && point.y != 0) {
-				// cout <<  "Match: " << v1[i] << point  <<endl;
-				arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
-			}
-			
-
-
-			// Mat squareOriginal = imageIn1( Rect(v1[i].x, v1[i].y, DELTA_SQUARE, DELTA_SQUARE) );
-			// Point2i pointMatch;
-			// int min = SEUIL_SQUARE;
-			// bool matchFound = false;
-			// //On parcourt les points de contours de l'image 2
-			// for(unsigned int j = 0; j < v2.size(); j++) {
-			// 	Mat squareCompared = imageIn2( Rect(v2[j].x, v2[j].y, DELTA_SQUARE, DELTA_SQUARE) );
-			// 	int sum = 0;
-			// 	//On les compares
-			// 	for( int x = 0; x < squareOriginal.rows; x++ ) {
-			// 		for( int y = 0; y < squareOriginal.cols; y++ ) {
-			// 			// sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
-			// 			sum += pow(squareOriginal.at<uchar>(x, y) - squareCompared.at<uchar>(x, y), 2);
-			// 		}
-			// 	}
-			// 	if (sum < SEUIL_SQUARE) {
-			// 		if (sum < min) {
-			// 			min = sum;
-			// 			pointMatch = v2[j];
-			// 			matchFound = true;
-			// 		}
-			// 	}
-			// }
-			// if (matchFound) {
-			// 	cout <<  "Match: " << v1[i] << pointMatch << " Sum " << min <<endl;
-			// 	arrowedLine(imageOut, v1[i] , Point2i(decalage + pointMatch.x,  pointMatch.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
-			// }
-
-			
+				// On vérifie que le point match bien en reverse
+				Point2i pointReverse = pointMatch(imageIn2, imageIn1, point, v1);
+				if (pointReverse == v1[i] && pointReverse.x != 0 && pointReverse.y != 0) {
+					// On illustre le match
+					arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 0, 255), 1, 8, 0, 0);
+				}
+			}			
 		}
 
 		for(unsigned int i = 0; i < v2.size(); i++) {
-			circle(imageOut, Point2i(decalage + v2[i].x,  v2[i].y), 3, Scalar(0, 0, 255));
+			// circle(imageOut, Point2i(decalage + v2[i].x,  v2[i].y), 3, Scalar(0, 0, 255));
 		}
 
-		imshow( "Corners", imageOut );       
-		// imshow( "Corners", roi );       
+		imshow( "Corners", imageOut );  
 
 		waitKey(0); 
-
 	} 
-	
 	return 0;
 }
 
