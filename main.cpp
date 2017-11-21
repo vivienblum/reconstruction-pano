@@ -7,7 +7,7 @@
 #define TAILLE 16
 #define SEUIL_SQUARE 2500
 #define DELTA_SQUARE 5
-#define SEUIL_DIFF 250
+#define SEUIL_DIFF 750
 
 using namespace std;
 using namespace cv;
@@ -105,13 +105,14 @@ Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Poi
 		}
 		// Si on trouve 
 		if (sum < SEUIL_SQUARE && sum < min) {
+			// On garde le lastMin pour vérifier qu'il y ait bien une forte différence 
 			lastMin = min;
 			min = sum;
 			pointMatch = vCompared[j];
 			matchFound = true;
 		}
 	}
-	if (matchFound && lastMin - min < SEUIL_DIFF ) {
+	if (matchFound && lastMin - min > SEUIL_DIFF ) {
 		// On retourne le point trouvé
 		return pointMatch;
 	}
@@ -176,10 +177,11 @@ int main(int argc, char** argv){
 		hconcat(imageIn1, imageIn2, imageOut);
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 
+		// On récupère les points de corners des 2 images
 		vector<Point2i> v1 = MY_FAST(imageIn1);
-		cout <<  "Nb points left : " << v1.size() << endl;
 		vector<Point2i> v2  = MY_FAST(imageIn2);
-		cout <<  "Nb points right : " << v2.size() << endl;
+
+		cout <<  "Nb points left : " << v1.size() <<  " Nb points right : " << v2.size() << endl;
 
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
