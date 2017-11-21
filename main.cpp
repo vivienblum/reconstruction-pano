@@ -5,7 +5,7 @@
 #define RAYON_FAST 5
 #define SEUIL 70
 #define TAILLE 16
-#define SEUIL_SQUARE 1200
+#define SEUIL_SQUARE 1500
 #define DELTA_SQUARE 5
 
 using namespace std;
@@ -116,11 +116,39 @@ Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Poi
 	return Point2i(0, 0);
 }
 
+vector<vector<Point2i> > getMatches(Mat imageIn1, Mat imageIn2, vector<Point2i> v1, vector<Point2i> v2) {
+	vector<vector<Point2i> > matches;
+	for(unsigned int i = 0; i < v1.size(); i++) {
+		// On cherche le point qui match
+		Point2i point = pointMatch(imageIn1, imageIn2, v1[i], v2);
+		if (point.x != 0 && point.y != 0) {
+			// On vérifie que le point match bien en reverse
+			Point2i pointReverse = pointMatch(imageIn2, imageIn1, point, v1);
+			if (pointReverse == v1[i] && pointReverse.x != 0 && pointReverse.y != 0) {
+				// On illustre le match
+				// arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 0, 255), 1, 8, 0, 0);
+				vector<Point2i> temp;
+				temp.push_back(v1[i]);
+				temp.push_back(point);
+				matches.push_back(temp);
+			}
+		}			
+	}
+	return matches;
+}
+
 /* Fonction pour afficher les points de corner */
 void showCorners(Mat &imageOut, vector<Point2i> corners, int decalage = 0) {
 	for(unsigned int i = 0; i < corners.size(); i++) {
 		circle(imageOut, Point2i(decalage + corners[i].x,  corners[i].y), 3, Scalar(0, 0, 255));
 	}
+}
+
+/* Fonction pour afficher les matchs */
+void showMatches(Mat &imageOut, vector<vector<Point2i> > matches, int decalage = 0) {
+	// for(unsigned int i = 0; i < matches.size(); i++) {
+	// 	arrowedLine(imageOut, matches[i][0] , Point2i(decalage + matches[i][1].x,  matches[i][1].y), Scalar(0, 0, 255), 1, 8, 0, 0);
+	// }
 }
 
 int main(int argc, char** argv){
@@ -150,6 +178,9 @@ int main(int argc, char** argv){
 		vector<Point2i> v2  = MY_FAST(imageIn2);
 		cout <<  "Nb points right : " << v2.size() << endl;
 
+		// vector<std::array<Point2i, 2>> matches;
+		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
+
 		for(unsigned int i = 0; i < v1.size(); i++) {
 
 			// On cherche le point qui match
@@ -159,12 +190,13 @@ int main(int argc, char** argv){
 				Point2i pointReverse = pointMatch(imageIn2, imageIn1, point, v1);
 				if (pointReverse == v1[i] && pointReverse.x != 0 && pointReverse.y != 0) {
 					// On illustre le match
-					arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 0, 255), 1, 8, 0, 0);
+					// arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 0, 255), 1, 8, 0, 0);
 				}
 			}			
 		}
-		showCorners(imageOut, v1);
-		showCorners(imageOut, v2, decalage);
+		// showCorners(imageOut, v1);
+		// showCorners(imageOut, v2, decalage);
+		// showCorners(imageOut, matches, decalage);
 
 		imshow( "Corners", imageOut );  
 
