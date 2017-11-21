@@ -1,6 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <stdio.h>
 #include <iostream>
+#include <time.h>
 
 #define RAYON_FAST 5
 #define SEUIL 50
@@ -153,6 +154,17 @@ void showMatches(Mat &imageOut, vector<vector<Point2i> > matches, int decalage =
 	for(unsigned int i = 0; i < matches.size(); i++) {
 		arrowedLine(imageOut, matches[i][0] , Point2i(decalage + matches[i][1].x,  matches[i][1].y), Scalar(0, 0, 255), 1, 8, 0, 0);
 	}
+}
+
+/* Fonction pour récupérer 4 matchs aléatoires */
+vector<vector<Point2i> > getRandomMatches(vector<vector<Point2i> > matches, int nb = 4) {
+	srand ( time(NULL) );
+	vector<vector<Point2i> > randomMatches;
+	for (int i = 0; i < nb; i++) {
+		int randIndex = rand() % matches.size();
+		randomMatches.push_back(matches[randIndex]);
+	}
+	return randomMatches;
 }
 
 int main(int argc, char** argv){
