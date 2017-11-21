@@ -11,6 +11,7 @@
 using namespace std;
 using namespace cv;
 
+/* Fonction pour récupérer les points de corner */
 vector<Point2i> MY_FAST(Mat imageIn) {
 	int parcourX [] = {-3,-3,-2,-1,0,1,2,3,3,3,2,1,0,-1,-2,-3};
     int parcourY [] = {0,1,2,3,3,3,2,1,0,-1,-2,-3,-3,-3,-2,-1};
@@ -68,6 +69,7 @@ vector<Point2i> MY_FAST(Mat imageIn) {
 	return solution;
 }
 
+/* Fonction pour calculer la moyenne d'une matrice */
 float averageMat(Mat matrix) {
 	int sum = 0;
 	for( int x = 0; x < matrix.rows; x++ ) {
@@ -78,6 +80,7 @@ float averageMat(Mat matrix) {
 	return sum/(matrix.rows*matrix.cols);
 }
 
+/* Fonction pour trouver le point qui match le mieux */
 Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Point2i> vCompared) {
 	// On récupère les voisins proche du points
 	Mat squareOriginal = imageIn1( Rect(pointOriginal.x, pointOriginal.y, DELTA_SQUARE, DELTA_SQUARE) );
@@ -111,6 +114,13 @@ Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Poi
 	}
 	// On retourne un point NULL
 	return Point2i(0, 0);
+}
+
+/* Fonction pour afficher les points de corner */
+void showCorners(Mat &imageOut, vector<Point2i> corners, int decalage = 0) {
+	for(unsigned int i = 0; i < corners.size(); i++) {
+		circle(imageOut, Point2i(decalage + corners[i].x,  corners[i].y), 3, Scalar(0, 0, 255));
+	}
 }
 
 int main(int argc, char** argv){
@@ -153,10 +163,8 @@ int main(int argc, char** argv){
 				}
 			}			
 		}
-
-		for(unsigned int i = 0; i < v2.size(); i++) {
-			// circle(imageOut, Point2i(decalage + v2[i].x,  v2[i].y), 3, Scalar(0, 0, 255));
-		}
+		showCorners(imageOut, v1);
+		showCorners(imageOut, v2, decalage);
 
 		imshow( "Corners", imageOut );  
 
