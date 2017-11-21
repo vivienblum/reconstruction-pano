@@ -5,7 +5,7 @@
 #define RAYON_FAST 3
 #define SEUIL 50
 #define TAILLE 16
-#define SEUIL_SQUARE 2500
+#define SEUIL_SQUARE 1000
 #define DELTA_SQUARE 3
 
 using namespace std;
@@ -66,7 +66,36 @@ vector<Point2i> MY_FAST(Mat imageIn) {
 		}
 	}
 	return solution;
+}
 
+Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Point2i> vCompared) {
+	Mat squareOriginal = imageIn1( Rect(pointOriginal.x, pointOriginal.y, DELTA_SQUARE, DELTA_SQUARE) );
+	Point2i pointMatch;
+	int min = SEUIL_SQUARE;
+	bool matchFound = false;
+	//On parcourt les points de contours de l'image 2
+	for(unsigned int j = 0; j < vCompared.size(); j++) {
+		Mat squareCompared = imageIn2( Rect(vCompared[j].x, vCompared[j].y, DELTA_SQUARE, DELTA_SQUARE) );
+		int sum = 0;
+		//On les compares
+		for( int x = 0; x < squareOriginal.rows; x++ ) {
+			for( int y = 0; y < squareOriginal.cols; y++ ) {
+				// sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
+				sum += pow(squareOriginal.at<uchar>(x, y) - squareCompared.at<uchar>(x, y), 2);
+			}
+		}
+		if (sum < SEUIL_SQUARE) {
+			if (sum < min) {
+				min = sum;
+				pointMatch = vCompared[j];
+				matchFound = true;
+			}
+		}
+	}
+	if (matchFound) {
+		return pointMatch;
+	}
+	return Point2i(0, 0);
 }
 
 int main(int argc, char** argv){
@@ -101,33 +130,42 @@ int main(int argc, char** argv){
 		for(unsigned int i = 0; i < v1.size(); i++) {
 			circle(imageOut, v1[i], 3, Scalar(0, 0, 255));
 
-			Mat squareOriginal = imageIn1( Rect(v1[i].x, v1[i].y, DELTA_SQUARE, DELTA_SQUARE) );
-			Point2i pointMatch;
-			int min = SEUIL_SQUARE;
-			bool matchFound = false;
-			//On parcourt les points de contours de l'image 2
-			for(unsigned int j = 0; j < v2.size(); j++) {
-				Mat squareCompared = imageIn2( Rect(v2[j].x, v2[j].y, DELTA_SQUARE, DELTA_SQUARE) );
-				int sum = 0;
-				//On les compares
-				for( int x = 0; x < squareOriginal.rows; x++ ) {
-					for( int y = 0; y < squareOriginal.cols; y++ ) {
-						// sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
-						sum += pow(squareOriginal.at<uchar>(x, y) - squareCompared.at<uchar>(x, y), 2);
-					}
-				}
-				if (sum < SEUIL_SQUARE) {
-					if (sum < min) {
-						min = sum;
-						pointMatch = v2[j];
-						matchFound = true;
-					}
-				}
+			Point2i point = pointMatch(imageIn1, imageIn2, v1[i], v2);
+			if (point.x != 0 && point.y != 0) {
+				// cout <<  "Match: " << v1[i] << point  <<endl;
+				arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
 			}
-			if (matchFound) {
-				cout <<  "Match: " << v1[i] << pointMatch << " Sum " << min <<endl;
-				 arrowedLine(imageOut, v1[i] , Point2i(decalage + pointMatch.x,  pointMatch.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
-			}
+			
+
+
+			// Mat squareOriginal = imageIn1( Rect(v1[i].x, v1[i].y, DELTA_SQUARE, DELTA_SQUARE) );
+			// Point2i pointMatch;
+			// int min = SEUIL_SQUARE;
+			// bool matchFound = false;
+			// //On parcourt les points de contours de l'image 2
+			// for(unsigned int j = 0; j < v2.size(); j++) {
+			// 	Mat squareCompared = imageIn2( Rect(v2[j].x, v2[j].y, DELTA_SQUARE, DELTA_SQUARE) );
+			// 	int sum = 0;
+			// 	//On les compares
+			// 	for( int x = 0; x < squareOriginal.rows; x++ ) {
+			// 		for( int y = 0; y < squareOriginal.cols; y++ ) {
+			// 			// sum += abs((int)squareOriginal.at<uchar>(x, y) - (int) squareCompared.at<uchar>(x, y));
+			// 			sum += pow(squareOriginal.at<uchar>(x, y) - squareCompared.at<uchar>(x, y), 2);
+			// 		}
+			// 	}
+			// 	if (sum < SEUIL_SQUARE) {
+			// 		if (sum < min) {
+			// 			min = sum;
+			// 			pointMatch = v2[j];
+			// 			matchFound = true;
+			// 		}
+			// 	}
+			// }
+			// if (matchFound) {
+			// 	cout <<  "Match: " << v1[i] << pointMatch << " Sum " << min <<endl;
+			// 	arrowedLine(imageOut, v1[i] , Point2i(decalage + pointMatch.x,  pointMatch.y), Scalar(0, 255, 0), 1, 8, 0, 0.1);
+			// }
+
 			
 		}
 
