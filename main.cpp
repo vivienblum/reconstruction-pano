@@ -3,10 +3,11 @@
 #include <iostream>
 
 #define RAYON_FAST 5
-#define SEUIL 70
+#define SEUIL 50
 #define TAILLE 16
-#define SEUIL_SQUARE 1500
+#define SEUIL_SQUARE 2500
 #define DELTA_SQUARE 5
+#define SEUIL_DIFF 250
 
 using namespace std;
 using namespace cv;
@@ -89,6 +90,7 @@ Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Poi
 
 	Point2i pointMatch;
 	int min = SEUIL_SQUARE;
+	int lastMin = min;
 	bool matchFound = false;
 	//On parcourt les points de contours de l'image 2
 	for(unsigned int j = 0; j < vCompared.size(); j++) {
@@ -103,12 +105,13 @@ Point2i pointMatch(Mat imageIn1, Mat imageIn2, Point2i pointOriginal, vector<Poi
 		}
 		// Si on trouve 
 		if (sum < SEUIL_SQUARE && sum < min) {
+			lastMin = min;
 			min = sum;
 			pointMatch = vCompared[j];
 			matchFound = true;
 		}
 	}
-	if (matchFound) {
+	if (matchFound && lastMin - min < SEUIL_DIFF ) {
 		// On retourne le point trouvé
 		return pointMatch;
 	}
