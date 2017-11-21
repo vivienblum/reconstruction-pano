@@ -177,11 +177,18 @@ int main(int argc, char** argv){
 		hconcat(imageIn1, imageIn2, imageOut);
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 
-		// On récupère les points de corners des 2 images
+		// On récupère les points de corners des 2 images avec MY_FAST
 		vector<Point2i> v1 = MY_FAST(imageIn1);
 		vector<Point2i> v2  = MY_FAST(imageIn2);
 
-		cout <<  "Nb points left : " << v1.size() <<  " Nb points right : " << v2.size() << endl;
+		// On récupère les points de corners des 2 image avec FAST
+		vector<KeyPoint> v1Fast;
+		FAST(imageIn1, v1Fast, SEUIL, true);
+		vector<KeyPoint> v2Fast;
+		FAST(imageIn2, v2Fast, SEUIL, true);
+
+		cout <<  "Left, MY_FAST : " << v1.size() <<  " FAST : " << v1Fast.size() << endl;
+		cout <<  "Right, MY_FAST : " << v2.size() <<  " FAST : " << v2Fast.size() << endl;
 
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
