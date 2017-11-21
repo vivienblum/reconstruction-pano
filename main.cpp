@@ -178,22 +178,8 @@ int main(int argc, char** argv){
 		vector<Point2i> v2  = MY_FAST(imageIn2);
 		cout <<  "Nb points right : " << v2.size() << endl;
 
-		// vector<std::array<Point2i, 2>> matches;
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
-		// for(unsigned int i = 0; i < v1.size(); i++) {
-
-		// 	// On cherche le point qui match
-		// 	Point2i point = pointMatch(imageIn1, imageIn2, v1[i], v2);
-		// 	if (point.x != 0 && point.y != 0) {
-		// 		// On vérifie que le point match bien en reverse
-		// 		Point2i pointReverse = pointMatch(imageIn2, imageIn1, point, v1);
-		// 		if (pointReverse == v1[i] && pointReverse.x != 0 && pointReverse.y != 0) {
-		// 			// On illustre le match
-		// 			// arrowedLine(imageOut, v1[i] , Point2i(decalage + point.x,  point.y), Scalar(0, 0, 255), 1, 8, 0, 0);
-		// 		}
-		// 	}			
-		// }
 		// showCorners(imageOut, v1);
 		// showCorners(imageOut, v2, decalage);
 		showMatches(imageOut, matches, decalage);
