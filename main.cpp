@@ -210,6 +210,10 @@ Mat getA(vector<vector<Point2i> > matches) {
 	return A;
 }
 
+Mat getV(Mat A) {
+	return A.t();
+}
+
 int main(int argc, char** argv){
 	
 	Mat imageIn1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
@@ -247,16 +251,34 @@ int main(int argc, char** argv){
 
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
+		// cout <<getA(getRandomMatches(matches)) <<endl;
+		// cout << getV(getA(getRandomMatches(matches))) << endl;
+		// SVD svd(Mat::zeros(Size(2, 4), DataType<int>::type));
+
 		// cout << getA(getRandomMatches(matches)) << endl;
 		/* TEST pour homography */
-		vector<Point2i> pts_src;
-		vector<Point2i> pts_dst;
-		for(unsigned int i = 0; i < matches.size(); i++) {
-			pts_src.push_back(matches[i][0]);
-			pts_dst.push_back(matches[i][1]);
-		}
-		Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
-		cout <<  h << endl;
+		// vector<Point2i> pts_src;
+		// vector<Point2i> pts_dst;
+		// for(unsigned int i = 0; i < matches.size(); i++) {
+		// 	pts_src.push_back(matches[i][0]);
+		// 	pts_dst.push_back(matches[i][1]);
+		// }
+		// Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
+		// cout <<  h << endl;
+		// Mat pano;
+		// for( int x = 0; x < imageIn2.rows; x++ ) {
+		// 	for( int y = 0; y < imageIn2.cols; y++ ) {
+		// 		int val = 0;
+		// 		imageOut.at<uchar>(x, y) = val;
+		// 	}
+		// }
+		// Mat pano;
+		// Stitcher stitcher = Stitcher::createDefault(false);
+	 //    stitcher.setPanoConfidenceThresh(0.8);
+	 //    Stitcher::Status status = stitcher.stitch({imageIn1, imageIn2}, pano);
+
+		/* TEST affichage */
+
 		// Mat imageOut2;
 		// warpPerspective(imageIn1, imageOut2, h, imageIn2.size());
 
@@ -264,7 +286,8 @@ int main(int argc, char** argv){
 		// showCorners(imageOut, v2, decalage);
 		showMatches(imageOut, matches, decalage);
 
-		imshow( "Corners", imageOut );  
+		imshow( "Lines", imageOut );  
+		// imshow( "Corners", pano );  
 
 		waitKey(0); 
 	} 
