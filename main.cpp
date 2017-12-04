@@ -211,7 +211,10 @@ Mat getA(vector<vector<Point2i> > matches) {
 }
 
 Mat getV(Mat A) {
-	return A.t();
+	Mat newA = A;
+	Mat At = newA.t();
+	Mat result = newA.mul(At);
+	return A;
 }
 
 int main(int argc, char** argv){
@@ -251,8 +254,11 @@ int main(int argc, char** argv){
 
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
-		// cout <<getA(getRandomMatches(matches)) <<endl;
-		// cout << getV(getA(getRandomMatches(matches))) << endl;
+		cout <<getA(getRandomMatches(matches)) <<endl;
+		Mat A, temp = getA(getRandomMatches(matches));
+		A.convertTo(temp, CV_32F, CV_64F);
+		cv::SVD svdMat(temp);
+		//cout << getV(getA(getRandomMatches(matches))) << endl;
 		// SVD svd(Mat::zeros(Size(2, 4), DataType<int>::type));
 
 		// cout << getA(getRandomMatches(matches)) << endl;
