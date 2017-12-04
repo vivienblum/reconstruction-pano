@@ -254,11 +254,18 @@ int main(int argc, char** argv){
 
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
-		cout <<getA(getRandomMatches(matches)) <<endl;
-		Mat A, temp = getA(getRandomMatches(matches));
-		A.convertTo(temp, CV_32F, CV_64F);
-		cv::SVD svdMat(temp);
-		//cout << getV(getA(getRandomMatches(matches))) << endl;
+		//cout <<getA(getRandomMatches(matches)) <<endl;
+		Mat dst, D, U, V, A = getA(getRandomMatches(matches));
+		A.convertTo(A, CV_64F);
+		cv::SVD svdMat(A);
+		Mat  w, u, vt;
+		SVD::compute(A, w, u, vt);
+		
+		//Mat w;
+		//cv::SVD::compute(svdMat, w);
+		//cv::eigen(svdMat, w);
+		//cv::SVD temp(temp1);
+		cout << vt << endl;
 		// SVD svd(Mat::zeros(Size(2, 4), DataType<int>::type));
 
 		// cout << getA(getRandomMatches(matches)) << endl;
