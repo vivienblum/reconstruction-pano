@@ -65,7 +65,6 @@ vector<Point2i> MY_FAST(Mat imageIn) {
 			}
 			if (cornerFound) {
 				solution.push_back(Point2i(y,x));
-
 			}
 		}
 	}
@@ -172,7 +171,6 @@ void showMatches(Mat &imageOut, vector<vector<Point2i> > matches, int decalage =
 
 /* Fonction pour récupérer 4 matchs aléatoires */
 vector<vector<Point2i> > getRandomMatches(vector<vector<Point2i> > matches, int nb = 4) {
-	srand ( time(NULL) );
 	vector<vector<Point2i> > randomMatches;
 	for (int i = 0; i < nb; i++) {
 		int randIndex = rand() % matches.size();
@@ -181,6 +179,7 @@ vector<vector<Point2i> > getRandomMatches(vector<vector<Point2i> > matches, int 
 	return randomMatches;
 }
 
+/* Fonction qui construit la matrice A à partier de 4 points d'apparairement */
 Mat getA(vector<vector<Point2i> > matches) {
 	Mat A = Mat::zeros(Size(9, matches.size()*2), DataType<uchar>::type);
 
@@ -213,12 +212,29 @@ Mat getA(vector<vector<Point2i> > matches) {
 
 /* Fonction qui construit la matrice H */
 Mat constructH(Mat lastV) {
-	float data[lastV.rows];
+	double data[lastV.rows];
 	for(int i = 0; i < lastV.rows; i++) {
-		data[i] = lastV.at<uchar>(0, i);
+		data[i] = lastV.at<double>(0, i);
+		//cout << data[i] << endl;
 	}
-	Mat H = Mat(3, 3, lastV.type(), data);
+	Mat H(3,3, lastV.type());
+	int rows = 3, cols = 3, cpt = 0;
+	for( int x = 0; x < rows; x++ ) {
+		for( int y = 0; y < cols; y++ ) {
+			H.at<double>(x, y) = data[cpt];
+			cpt++;
+		}
+	}
+	//Mat H = Mat(3, 3, lastV.type(), data);
 	return H;
+}
+
+/* Fonction qui compare 2 matrices */
+bool isEqual(Mat A, Mat B, int seuil = 0) {
+	//cout << (sum(A != B) == Scalar(0,0,0,0)) << endl;
+	cout << A << endl;
+	cout << B << endl;
+	return sum(A != B) == Scalar(0,0,0,0);
 }
 
 /* Fonction getHomography */
@@ -228,16 +244,57 @@ Mat getHomography(Mat A) {
 	SVD::compute(A, w, u, vt);
 	V = vt.t();
 	lastC = V.col(V.cols - 1 );
+	//cout << lastC << endl;
+	//cout << constructH(lastC) << endl;
 	return constructH(lastC);
 }
 
 /* Fonction qui récupère la meilleur homography */
 Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 	Mat H;
+	vector<Mat> listH;
+	vector<int> votes;
 	for(int i = 0; i < limit; i++) {
+		//cout << getA(getRandomMatches(matches)) << endl;
 		Mat hFound = getHomography(getA(getRandomMatches(matches)));
-		cout << hFound << endl;
+		
+		// TODO check if exists same H
+		/*int k = 0;
+		bool equal = false;
+		do{		
+			if (listH.size() == 0) {
+				//listH.push_back(hFound);
+				//votes.push_back(1);	
+			}
+			else {
+				equal = isEqual(listH[k], hFound);
+				votes[k]++;
+			}
+			k++;
+		}while(k < listH.size());
+		if (!equal) {
+			listH.push_back(hFound);
+			votes.push_back(1);
+		}*/
+		
+		bool equal = false;
+		for(unsigned int j = 0; j < listH.size() && !equal; j++) {
+			//listH[j];
+			equal = isEqual(listH[j], hFound);
+			//cout << listH[j] << endl;
+			if (equal) {
+				votes[j]++;
+			}
+		}
+		if(!equal) {
+			listH.push_back(hFound);
+			votes.push_back(1);
+		}
+	
+		//listH.push_back(hFound);
+		//votes.push_back(1);	
 	}
+	cout << votes.size() << endl;
 	return H;
 }
 
@@ -255,6 +312,8 @@ int main(int argc, char** argv){
 	
 	Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
 
+	srand(time(NULL));
+	
 	if(! imageIn1.data ) {
 		cout <<  "Could not open or find the image" << endl ;
 		return -1;
