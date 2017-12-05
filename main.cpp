@@ -230,11 +230,23 @@ Mat constructH(Mat lastV) {
 }
 
 /* Fonction qui compare 2 matrices */
-bool isEqual(Mat A, Mat B, int seuil = 0) {
+bool isEqual(Mat A, Mat B, double seuil = 0.5) {
 	//cout << (sum(A != B) == Scalar(0,0,0,0)) << endl;
-	cout << A << endl;
-	cout << B << endl;
-	return sum(A != B) == Scalar(0,0,0,0);
+	//cout << A << endl;
+	//cout << B << endl;
+	
+	bool equal = true;
+	for( int x = 0; x < A.rows && equal; x++ ) {
+		for( int y = 0; y < A.cols && equal; y++ ) {
+			//cout << A.at<double>(x, y) << endl;
+			if(!(A.at<double>(x, y) < B.at<double>(x, y) + seuil && A.at<double>(x, y) > B.at<double>(x, y) - seuil)) {
+				equal = false;
+			}
+		}
+	}
+	
+	//return sum(A != B) == Scalar(0,0,0,0);
+	return equal;
 }
 
 /* Fonction getHomography */
@@ -310,7 +322,8 @@ int main(int argc, char** argv){
 
 	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
 	
-	Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
+	//Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
+	Mat pano = Mat::zeros(Size(width+decalage+200, imageIn1.rows+400), imageIn1.type());
 
 	srand(time(NULL));
 	
@@ -368,35 +381,62 @@ int main(int argc, char** argv){
 		Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
 		//cout <<  imageOut.rows << endl;
 		//cout <<  imageOut.cols << endl;
+		int decalageTop = 300;
+		/*for( int x = 0; x < imageIn1.rows; x++ ) {
+			for( int y = 0; y < imageIn1.cols; y++ ) {
+				pano.at<uchar>(x + decalageTop, y) = imageIn1.at<uchar>(x, y);
+			}
+		}*/
+		
+		for( int x = 0; x < imageIn1.rows; x++ ) {
+			for( int y = 0; y < imageIn1.cols; y++ ) {
+				
+				double data[3] = { x, y, 1 };
+				Mat X = Mat(3, 1, h.type(), data);
+				Mat X2 = h*X;
+				double scale = X2.at<double>(0, 2);
+				
+				int val = imageIn1.at<uchar>(x, y);
+				int newX = (int) X2.at<double>(0, 0)/scale;
+				int newY = (int) X2.at<double>(0, 1)/scale;
+				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
+				//cout << "Point 1: " << endl;
+				//cout << "x : " << x << " y : " <<  y << endl;
+				//cout << "x : " << newX << " y : " <<  newY << endl;
+				//if (newX > 0 && newY > 0){
+					//pano.at<uchar>(newX, newY) = 255;
+				//	pano.at<uchar>(newX, newY ) = val;
+				//}
+				//pano.at<uchar>(newX + decalageTop, newY + decalage) = val;
+				//pano.at<uchar>(newX+ decalageTop, newY) = val;
+				//pano.at<uchar>(newX + decalageTop, newY) = val;
+				pano.at<uchar>(x + decalageTop, y) = val;
+			}
+		}
 		for( int x = 0; x < imageIn2.rows; x++ ) {
 			for( int y = 0; y < imageIn2.cols; y++ ) {
-				//imageIn2.at<uchar>(x, y);
-				//Mat X(Size(1, 3), imageIn2.type());
-				//Mat X = Mat::eye(3, 1, CV_32FC1);
 				
-				
-				int data[3] = { x, y, 1 };
-				Mat X = Mat(3, 1, CV_32F, data);
-				
-				//X.at<uchar>(0, 0) = x;
-				//X.at<uchar>(0, 1) = y;
-				//X.at<uchar>(0, 2) = 1;
-				X.convertTo(X, h.type());
-				//X.at<uchar>(0, 2) = 4;
-				
-				//Mat X2 = h.mul(X);
+				double data[3] = { x, y, 1 };
+				Mat X = Mat(3, 1, h.type(), data);
 				Mat X2 = h*X;
-				float scale = X2.at<float>(0, 2);
+				double scale = X2.at<double>(0, 2);
 				
-				//cout << X2[0] << endl;
-				
-				int val =  (int) imageIn2.at<uchar>(x, y);
-				//X2[0][0] = 0;
-				int newX = X2.at<uchar>(0, 0);
-				int newY = X2.at<uchar>(0, 1);
-				//cout << "x : " << X2.at<uchar>(0, 0) << " y : " <<  X2.at<uchar>(0, 1) << endl;
+				int val = imageIn2.at<uchar>(x, y);
+				int newX = (int) X2.at<double>(0, 0)/scale;
+				int newY = (int) X2.at<double>(0, 1)/scale;
+				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
+				//cout << "Point : " << endl;
 				//cout << "x : " << x << " y : " <<  y << endl;
-				imageIn2.at<uchar>(X2.at<uchar>(0, 0), X2.at<uchar>(0, 1)) = 255;
+				//cout << "x : " << newX << " y : " <<  newY << endl;
+				//if (newX > 0 && newY > 0){
+					//pano.at<uchar>(newX, newY) = 255;
+				//	pano.at<uchar>(newX, newY ) = val;
+				//}
+				//pano.at<uchar>(newX + decalageTop, newY + decalage) = val;
+				//pano.at<uchar>(newX+ decalageTop +140, newY + 160) = val;
+				//pano.at<uchar>(newX+ decalageTop , newY + decalage) = val;
+				pano.at<uchar>(newX+ decalageTop , newY ) = val;
+				//pano.at<uchar>(x+ decalageTop , y +160) = val;
 			}
 		}
 		 
@@ -422,7 +462,7 @@ int main(int argc, char** argv){
 		showMatches(imageOut, matches, decalage);
 
 		//imshow( "Lines", imageOut );  
-		 imshow( "Corners", imageIn2 );  
+		 imshow( "Corners", pano );  
 
 		waitKey(0); 
 	} 
