@@ -9,6 +9,7 @@
 #define SEUIL_SQUARE 2500
 #define DELTA_SQUARE 5
 #define SEUIL_DIFF 750
+#define T 10
 
 using namespace std;
 using namespace cv;
@@ -210,11 +211,34 @@ Mat getA(vector<vector<Point2i> > matches) {
 	return A;
 }
 
-Mat getV(Mat A) {
-	Mat newA = A;
-	Mat At = newA.t();
-	Mat result = newA.mul(At);
-	return A;
+/* Fonction qui construit la matrice H */
+Mat constructH(Mat lastV) {
+	float data[lastV.rows];
+	for(int i = 0; i < lastV.rows; i++) {
+		data[i] = lastV.at<uchar>(0, i);
+	}
+	Mat H = Mat(3, 3, lastV.type(), data);
+	return H;
+}
+
+/* Fonction getHomography */
+Mat getHomography(Mat A) {
+	A.convertTo(A, CV_64F);
+	Mat  w, u, vt, V, lastC;
+	SVD::compute(A, w, u, vt);
+	V = vt.t();
+	lastC = V.col(V.cols - 1 );
+	return constructH(lastC);
+}
+
+/* Fonction qui récupère la meilleur homography */
+Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
+	Mat H;
+	for(int i = 0; i < limit; i++) {
+		Mat hFound = getHomography(getA(getRandomMatches(matches)));
+		cout << hFound << endl;
+	}
+	return H;
 }
 
 int main(int argc, char** argv){
@@ -228,6 +252,8 @@ int main(int argc, char** argv){
 	int decalage = imageIn1.cols;
 
 	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
+	
+	Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
 
 	if(! imageIn1.data ) {
 		cout <<  "Could not open or find the image" << endl ;
@@ -255,29 +281,66 @@ int main(int argc, char** argv){
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
 		//cout <<getA(getRandomMatches(matches)) <<endl;
-		Mat dst, D, U, V, A = getA(getRandomMatches(matches));
-		A.convertTo(A, CV_64F);
-		cv::SVD svdMat(A);
-		Mat  w, u, vt;
-		SVD::compute(A, w, u, vt);
+		//Mat dst, D, U, A = getA(getRandomMatches(matches));
+		//A.convertTo(A, CV_64F);
+		//cv::SVD svdMat(A);
+		//Mat  w, u, vt, V;
+		//SVD::compute(A, w, u, vt);
+		//V = vt.t();
+		
+		//Mat hFound = getHomography(getA(getRandomMatches(matches)));
+		getBestHomography(matches);
 		
 		//Mat w;
 		//cv::SVD::compute(svdMat, w);
 		//cv::eigen(svdMat, w);
 		//cv::SVD temp(temp1);
-		cout << vt << endl;
+		//cout << V.col(V.cols - 1 ) << endl;
 		// SVD svd(Mat::zeros(Size(2, 4), DataType<int>::type));
 
 		// cout << getA(getRandomMatches(matches)) << endl;
 		/* TEST pour homography */
-		// vector<Point2i> pts_src;
-		// vector<Point2i> pts_dst;
-		// for(unsigned int i = 0; i < matches.size(); i++) {
-		// 	pts_src.push_back(matches[i][0]);
-		// 	pts_dst.push_back(matches[i][1]);
-		// }
-		// Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
-		// cout <<  h << endl;
+		vector<Point2i> pts_src;
+		vector<Point2i> pts_dst;
+		for(unsigned int i = 0; i < matches.size(); i++) {
+			pts_src.push_back(matches[i][0]);
+			pts_dst.push_back(matches[i][1]);
+		}
+		Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
+		//cout <<  imageOut.rows << endl;
+		//cout <<  imageOut.cols << endl;
+		for( int x = 0; x < imageIn2.rows; x++ ) {
+			for( int y = 0; y < imageIn2.cols; y++ ) {
+				//imageIn2.at<uchar>(x, y);
+				//Mat X(Size(1, 3), imageIn2.type());
+				//Mat X = Mat::eye(3, 1, CV_32FC1);
+				
+				
+				int data[3] = { x, y, 1 };
+				Mat X = Mat(3, 1, CV_32F, data);
+				
+				//X.at<uchar>(0, 0) = x;
+				//X.at<uchar>(0, 1) = y;
+				//X.at<uchar>(0, 2) = 1;
+				X.convertTo(X, h.type());
+				//X.at<uchar>(0, 2) = 4;
+				
+				//Mat X2 = h.mul(X);
+				Mat X2 = h*X;
+				float scale = X2.at<float>(0, 2);
+				
+				//cout << X2[0] << endl;
+				
+				int val =  (int) imageIn2.at<uchar>(x, y);
+				//X2[0][0] = 0;
+				int newX = X2.at<uchar>(0, 0);
+				int newY = X2.at<uchar>(0, 1);
+				//cout << "x : " << X2.at<uchar>(0, 0) << " y : " <<  X2.at<uchar>(0, 1) << endl;
+				//cout << "x : " << x << " y : " <<  y << endl;
+				imageIn2.at<uchar>(X2.at<uchar>(0, 0), X2.at<uchar>(0, 1)) = 255;
+			}
+		}
+		 
 		// Mat pano;
 		// for( int x = 0; x < imageIn2.rows; x++ ) {
 		// 	for( int y = 0; y < imageIn2.cols; y++ ) {
@@ -299,8 +362,8 @@ int main(int argc, char** argv){
 		// showCorners(imageOut, v2, decalage);
 		showMatches(imageOut, matches, decalage);
 
-		imshow( "Lines", imageOut );  
-		// imshow( "Corners", pano );  
+		//imshow( "Lines", imageOut );  
+		 imshow( "Corners", imageIn2 );  
 
 		waitKey(0); 
 	} 
