@@ -9,8 +9,8 @@
 #define SEUIL_SQUARE 2500
 #define DELTA_SQUARE 5
 #define SEUIL_DIFF 750
-#define T 1
-#define SEUIL_NORME 100
+#define T 50
+#define SEUIL_NORME 50
 #define SEUIL_HOMO 0.01
 
 using namespace std;
@@ -210,7 +210,6 @@ Mat getA(vector<vector<Point2i> > matches) {
 		A.at<uchar>(x + 1, 8) = -matches[i][1].y;	// -yn'*/
 		
 		// On construit la 1ère ligne
-		//cout << matches[i][0].x << endl;
 		A.at<double>(x, 0) = -1*matches[i][0].x;	// -xn
 		A.at<double>(x, 1) = -matches[i][0].y;	// -yn
 		A.at<double>(x, 2) = -1;	// -1
@@ -232,7 +231,6 @@ Mat getA(vector<vector<Point2i> > matches) {
 		A.at<double>(x + 1, 7) = matches[i][1].y*matches[i][0].y;	// yn'yn
 		A.at<double>(x + 1, 8) = matches[i][1].y;	// yn'
 	}
-	//cout << A << endl;
 	return A;
 }
 
@@ -276,43 +274,12 @@ bool isEqual(Mat A, Mat B, double seuil = SEUIL_HOMO) {
 
 /* Fonction getHomography */
 Mat getHomography(Mat A) {
-	//cout << A << endl;
+	Mat w, u, vt, V, lastC;
 	
-	//A.convertTo(A, CV_64F);
-	//cout << A << endl;
-	//cout << A << endl;
-	//Mat S, U, V, Vt, lastC;
-	Mat w, u, vt, Vt, V, lastC;
-	
-	//SVD svdMat(A);
-	//cout << svdMat << endl;
-	//svdMat.compute(A, S, U, V);
-	
-	//SVD::compute(A, S, U, V);
 	SVD::compute(A, w, u, vt);
-	Vt = V.t();
+	V = vt.t();
 	
-	Mat b = Mat::zeros(Size(1, 8), DataType<double>::type);
-	Mat b2 = u.t()*b;
-	Mat Y = Mat::zeros(Size(8, 9), DataType<double>::type);
-	for( int x = 0; x < Y.rows; x++ ) {
-		for( int y = 0; y < Y.cols; y++ ) {
-			//Y.at<double>(x + 1, 8);
-			Y.at<double>(x, y) = b2.at<double>(x, y)/w.at<double>(x, y);
-		}
-	}
-	//cout << Y << endl;
-	//cout << b2 << endl;
-	//cout << vt << endl;
-	//cout << V.t()*Y << endl;
-	//V = vt;
-	/*cout << "S : " << endl;
-	cout << S.col(S.cols - 1 ) << endl;
-	cout << "u : " << endl;
-	cout << U.col(U.cols - 1 ) << endl;
-	cout << "vt : "  << endl;
-	cout << Vt.col(Vt.cols - 1 ) << endl;*/
-	lastC = vt.col(vt.cols - 1 );
+	lastC = V.col(V.cols - 1 );
 	return constructH(lastC);
 }
 
@@ -325,27 +292,8 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 		vector<vector<Point2i> > randomMatches = getRandomMatches(matches);
 		Mat hFound = getHomography(getA(randomMatches));
 		
-		// TODO check if homo correct 
-		for(unsigned int j = 0; j < randomMatches.size(); j++) {
-			
-			//cout << randomMatches[j][0]<<endl;
-			
-			double data[3] = { randomMatches[j][0].x, randomMatches[j][0].y, 1 };
-			double data1[3] = { randomMatches[j][1].x, randomMatches[j][1].y, 1 };
-			
-			Mat X = Mat(3, 1,  DataType<double>::type, data);
-			Mat X2 = Mat(3, 1,  DataType<double>::type, data1);
-			//cout << "X1" << endl;
-			//cout << X << endl;
-			
-			
-			//cout << "x : " << randomMatches[i][0].x << " y : " << randomMatches[i][0].y << endl;
-			//cout << "x : " << randomMatches[i][0].x << " y : " << randomMatches[i][0].y << endl;
-		}
-		
 		bool equal = false;
-		for(unsigned int j = 0; j < listH.size() && !equal; j++) {
-			
+		for(unsigned int j = 0; j < listH.size() && !equal; j++) {	
 			//Point2f x(randomMatches[0][0].x, randomMatches[0][0].y);
 			//Point2f x1(randomMatches[0][1].x, randomMatches[0][1].y);
 			
@@ -359,10 +307,7 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 			
 			if (norm(hFound*X - X2) < SEUIL_NORME && equal) {
 				votes[j]++;
-				//cout << norm(hFound*X - X2) << endl;
-			}
-			
-			
+			}					
 		}
 		if(!equal) {
 			listH.push_back(hFound);
@@ -377,7 +322,6 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 			indexMax = i;
 		}
 	}
-	//cout << listH[indexMax] << endl;
 	return listH[indexMax];
 }
 
@@ -408,7 +352,6 @@ int main(int argc, char** argv){
 	int decalage = imageIn1.cols;
 
 	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
-	Mat imageOut2 = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
 	
 	//Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
 	Mat pano = Mat::zeros(Size(width+decalage+200, imageIn1.rows+400), imageIn1.type());
@@ -423,7 +366,6 @@ int main(int argc, char** argv){
 
 		//On crée un image contenant les 2 images
 		hconcat(imageIn1, imageIn2, imageOut);
-		hconcat(imageIn1, imageIn2, imageOut2);
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 
 		// On récupère les points de corners des 2 images avec MY_FAST
@@ -441,25 +383,6 @@ int main(int argc, char** argv){
 
 		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
 
-		//cout <<getA(getRandomMatches(matches)) <<endl;
-		//Mat dst, D, U, A = getA(getRandomMatches(matches));
-		//A.convertTo(A, CV_64F);
-		//cv::SVD svdMat(A);
-		//Mat  w, u, vt, V;
-		//SVD::compute(A, w, u, vt);
-		//V = vt.t();
-		
-		//Mat hFound = getHomography(getA(getRandomMatches(matches)));
-		
-		
-		
-		//Mat w;
-		//cv::SVD::compute(svdMat, w);
-		//cv::eigen(svdMat, w);
-		//cv::SVD temp(temp1);
-		//cout << V.col(V.cols - 1 ) << endl;
-		// SVD svd(Mat::zeros(Size(2, 4), DataType<int>::type));
-
 		// cout << getA(getRandomMatches(matches)) << endl;
 		/* TEST pour homography */
 		vector<Point2i> pts_src;
@@ -469,48 +392,34 @@ int main(int argc, char** argv){
 			pts_dst.push_back(matches[i][1]);
 		}
 		Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
-		//cout <<  imageOut.rows << endl;
-		cout <<  h << endl;
 		
+		/* My HOMOGRAPHY */
 		Mat myH = getBestHomography(matches);
 		
-		cout <<  myH << endl;
-		//return 0;
-		//h = myH;
+		cout << h << endl;
+		cout << myH << endl;
 		
-    // Warp source image to destination based on homography
-    //warpPerspective(imageIn2, pano, h, imageIn1.size());
+		//h = myH;
 		
 		int decalageTop = 300;
 		
 		for( int x = 0; x < imageIn1.rows; x++ ) {
 			for( int y = 0; y < imageIn1.cols; y++ ) {
 				
-				double data[3] = { x, y, 1 };
-				Mat X = Mat(3, 1, h.type(), data);
+				//double data[3] = { x, y, 1 };
+				//Mat X = Mat(3, 1, h.type(), data);
 				
-				Mat X2 = h*X;
+				//Mat X2 = h*X;
 				
-				double scale = X2.at<double>(0, 2);
+				//double scale = X2.at<double>(0, 2);
 				
 				int val = imageIn1.at<uchar>(x, y);
-				int newX = (int) X2.at<double>(0, 0)/scale;
-				int newY = (int) X2.at<double>(0, 1)/scale;
+				//int newX = (int) X2.at<double>(0, 0)/scale;
+				//int newY = (int) X2.at<double>(0, 1)/scale;
 				
-				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
-				//cout << "Point 1: " << endl;
-				//cout << "x : " << x << " y : " <<  y << endl;
-				//cout << "x : " << newX << " y : " <<  newY << endl;
-				//if (newX > 0 && newY > 0){
-					//pano.at<uchar>(newX, newY) = 255;
-				//	pano.at<uchar>(newX, newY ) = val;
-				//}
-				//pano.at<uchar>(newX + decalageTop, newY + decalage) = val;
-				//pano.at<uchar>(newX+ decalageTop, newY) = val;
-				//pano.at<uchar>(newX + decalageTop, newY) = val;
+				//Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
+
 				pano.at<uchar>(x + decalageTop, y) = val;
-				//pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y ) = val;
 			}
 		}
 		for( int x = 0; x < imageIn2.rows; x++ ) {
@@ -518,78 +427,17 @@ int main(int argc, char** argv){
 				
 				double data[3] = { x, y, 1 };
 				Mat X = Mat(3, 1, h.type(), data);
-				cout << "h" << endl;
-				cout << h << endl;
-				cout << "x" << endl;
-				cout << X << endl;
-				cout << "h*x" << endl;
-				cout << h*X << endl;
-				Mat X2 = h*X;
-				double scale = X2.at<double>(0, 2);
 				
-				//cout << X2 << endl;
+				Mat X2 = h*X;
+				double scale = X2.at<double>(0, 2);	
 				
 				int val = imageIn2.at<uchar>(x, y);
-				//Mat lin_polar_img;
-				//Point2f center(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-				//cout << center << endl;
-				//double M = 2;
-				//linearPolar(imageIn2, pano, center, M, 0);
-				//cout << lin_polar_img << endl;
-				//return 0;
-				
-				
-
-
-			//cout << "X2" << endl;
-			//cout << X2 << endl;
-			//cout << Point2f(X2.at<double>(0, 0)/X2.at<double>(0, 2), X2.at<double>(0, 1)/X2.at<double>(0, 2)) << endl;
-			
-				
 				
 				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-				//cout << "X*H" << endl;
-			Mat xH = h*X;
-			//cout << newPoint << endl;
-			//cout << Point2f(xH.at<double>(0, 0)/xH.at<double>(0, 2), xH.at<double>(0, 1)/xH.at<double>(0, 2)) << endl;
-				//return 0;
 				
-				//int newX = (int) X2.at<double>(0, 0)/scale;
-				//int newY = (int) X2.at<double>(0, 1)/scale;
-				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
-				//cout << "Point : " << endl;
-				//cout << "x : " << x << " y : " <<  y << endl;
-				//cout << "x : " << newX << " y : " <<  newY << endl;
-				//if (newX > 0 && newY > 0){
-				//	pano.at<uchar>(newX , newY ) = val;
-				//}
-				//pano.at<uchar>(newX + decalageTop, newY + decalage) = val;
-				//pano.at<uchar>(newX+ decalageTop +140, newY + 160) = val;
-				//pano.at<uchar>(newX+ decalageTop , newY + decalage) = val;
-				//pano.at<uchar>(newX+ decalageTop , newY ) = val;
-				pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y ) = val;
-				//pano.at<uchar>(x+ decalageTop , y) = val;
+				pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
 			}
 		}
-		
-		
-		 
-		// Mat pano;
-		// for( int x = 0; x < imageIn2.rows; x++ ) {
-		// 	for( int y = 0; y < imageIn2.cols; y++ ) {
-		// 		int val = 0;
-		// 		imageOut.at<uchar>(x, y) = val;
-		// 	}
-		// }
-		// Mat pano;
-		// Stitcher stitcher = Stitcher::createDefault(false);
-	 //    stitcher.setPanoConfidenceThresh(0.8);
-	 //    Stitcher::Status status = stitcher.stitch({imageIn1, imageIn2}, pano);
-
-		/* TEST affichage */
-
-		// Mat imageOut2;
-		// warpPerspective(imageIn1, imageOut2, h, imageIn2.size());
 
 		// showCorners(imageOut, v1);
 		// showCorners(imageOut, v2, decalage);
