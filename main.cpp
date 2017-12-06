@@ -9,7 +9,9 @@
 #define SEUIL_SQUARE 2500
 #define DELTA_SQUARE 5
 #define SEUIL_DIFF 750
-#define T 10
+#define T 1
+#define SEUIL_NORME 100
+#define SEUIL_HOMO 0.01
 
 using namespace std;
 using namespace cv;
@@ -181,12 +183,12 @@ vector<vector<Point2i> > getRandomMatches(vector<vector<Point2i> > matches, int 
 
 /* Fonction qui construit la matrice A à partier de 4 points d'apparairement */
 Mat getA(vector<vector<Point2i> > matches) {
-	Mat A = Mat::zeros(Size(9, matches.size()*2), DataType<uchar>::type);
+	Mat A = Mat::zeros(Size(9, matches.size()*2), DataType<double>::type);
 
 	// On parcourt les lignes
 	for( int x = 0, i = 0; x < A.rows; x+=2, i++ ) { 
 		// On construit la 1ère ligne
-		A.at<uchar>(x, 0) = matches[i][0].x;	// xn
+		/*A.at<uchar>(x, 0) = matches[i][0].x;	// xn
 		A.at<uchar>(x, 1) = matches[i][0].y;	// yn
 		A.at<uchar>(x, 2) = 1;	// 1
 		A.at<uchar>(x, 3) = 0;	// 0
@@ -205,8 +207,32 @@ Mat getA(vector<vector<Point2i> > matches) {
 		A.at<uchar>(x + 1, 5) = 1;	// 1
 		A.at<uchar>(x + 1, 6) = -matches[i][1].y*matches[i][0].x;	// -yn'xn
 		A.at<uchar>(x + 1, 7) = -matches[i][1].y*matches[i][0].y;	// -yn'yn
-		A.at<uchar>(x + 1, 8) = -matches[i][1].y;	// -yn'
+		A.at<uchar>(x + 1, 8) = -matches[i][1].y;	// -yn'*/
+		
+		// On construit la 1ère ligne
+		//cout << matches[i][0].x << endl;
+		A.at<double>(x, 0) = -1*matches[i][0].x;	// -xn
+		A.at<double>(x, 1) = -matches[i][0].y;	// -yn
+		A.at<double>(x, 2) = -1;	// -1
+		A.at<double>(x, 3) = 0;	// 0
+		A.at<double>(x, 4) = 0;	// 0
+		A.at<double>(x, 5) = 0;	// 0
+		A.at<double>(x, 6) = matches[i][1].x*matches[i][0].x;	// xn'xn
+		A.at<double>(x, 7) = matches[i][1].x*matches[i][0].y;	// xn'yn
+		A.at<double>(x, 8) = matches[i][1].x;	// xn'
+
+		// On construit la 2ème ligne
+		A.at<double>(x + 1, 0) = 0;	// 0
+		A.at<double>(x + 1, 1) = 0;	// 0
+		A.at<double>(x + 1, 2) = 0;	// 0
+		A.at<double>(x + 1, 3) = -matches[i][0].x;	// -xn
+		A.at<double>(x + 1, 4) = -matches[i][0].y;	// -yn
+		A.at<double>(x + 1, 5) = -1;	// -1
+		A.at<double>(x + 1, 6) = matches[i][1].y*matches[i][0].x;	// yn'xn
+		A.at<double>(x + 1, 7) = matches[i][1].y*matches[i][0].y;	// yn'yn
+		A.at<double>(x + 1, 8) = matches[i][1].y;	// yn'
 	}
+	//cout << A << endl;
 	return A;
 }
 
@@ -230,7 +256,7 @@ Mat constructH(Mat lastV) {
 }
 
 /* Fonction qui compare 2 matrices */
-bool isEqual(Mat A, Mat B, double seuil = 0.5) {
+bool isEqual(Mat A, Mat B, double seuil = SEUIL_HOMO) {
 	//cout << (sum(A != B) == Scalar(0,0,0,0)) << endl;
 	//cout << A << endl;
 	//cout << B << endl;
@@ -250,35 +276,109 @@ bool isEqual(Mat A, Mat B, double seuil = 0.5) {
 
 /* Fonction getHomography */
 Mat getHomography(Mat A) {
-	A.convertTo(A, CV_64F);
-	Mat  w, u, vt, V, lastC;
+	//cout << A << endl;
+	
+	//A.convertTo(A, CV_64F);
+	//cout << A << endl;
+	//cout << A << endl;
+	//Mat S, U, V, Vt, lastC;
+	Mat w, u, vt, Vt, V, lastC;
+	
+	//SVD svdMat(A);
+	//cout << svdMat << endl;
+	//svdMat.compute(A, S, U, V);
+	
+	//SVD::compute(A, S, U, V);
 	SVD::compute(A, w, u, vt);
-	V = vt.t();
-	lastC = V.col(V.cols - 1 );
+	Vt = V.t();
+	
+	Mat b = Mat::zeros(Size(1, 8), DataType<double>::type);
+	Mat b2 = u.t()*b;
+	Mat Y = Mat::zeros(Size(8, 9), DataType<double>::type);
+	for( int x = 0; x < Y.rows; x++ ) {
+		for( int y = 0; y < Y.cols; y++ ) {
+			//Y.at<double>(x + 1, 8);
+			Y.at<double>(x, y) = b2.at<double>(x, y)/w.at<double>(x, y);
+		}
+	}
+	//cout << Y << endl;
+	//cout << b2 << endl;
+	//cout << vt << endl;
+	//cout << V.t()*Y << endl;
+	//V = vt;
+	/*cout << "S : " << endl;
+	cout << S.col(S.cols - 1 ) << endl;
+	cout << "u : " << endl;
+	cout << U.col(U.cols - 1 ) << endl;
+	cout << "vt : "  << endl;
+	cout << Vt.col(Vt.cols - 1 ) << endl;*/
+	lastC = vt.col(vt.cols - 1 );
 	return constructH(lastC);
 }
 
 /* Fonction qui récupère la meilleur homography */
 Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
-	Mat H;
+	//Mat H;
 	vector<Mat> listH;
 	vector<int> votes;
 	for(int i = 0; i < limit; i++) {
-		Mat hFound = getHomography(getA(getRandomMatches(matches)));
+		vector<vector<Point2i> > randomMatches = getRandomMatches(matches);
+		Mat hFound = getHomography(getA(randomMatches));
+		
+		// TODO check if homo correct 
+		for(unsigned int j = 0; j < randomMatches.size(); j++) {
+			
+			//cout << randomMatches[j][0]<<endl;
+			
+			double data[3] = { randomMatches[j][0].x, randomMatches[j][0].y, 1 };
+			double data1[3] = { randomMatches[j][1].x, randomMatches[j][1].y, 1 };
+			
+			Mat X = Mat(3, 1,  DataType<double>::type, data);
+			Mat X2 = Mat(3, 1,  DataType<double>::type, data1);
+			//cout << "X1" << endl;
+			//cout << X << endl;
+			
+			
+			//cout << "x : " << randomMatches[i][0].x << " y : " << randomMatches[i][0].y << endl;
+			//cout << "x : " << randomMatches[i][0].x << " y : " << randomMatches[i][0].y << endl;
+		}
+		
 		bool equal = false;
 		for(unsigned int j = 0; j < listH.size() && !equal; j++) {
+			
+			//Point2f x(randomMatches[0][0].x, randomMatches[0][0].y);
+			//Point2f x1(randomMatches[0][1].x, randomMatches[0][1].y);
+			
+			double data[3] = { randomMatches[0][0].x, randomMatches[0][0].y, 1 };
+			double data1[3] = { randomMatches[0][1].x, randomMatches[0][1].y, 1 };
+			
+			Mat X = Mat(3, 1,  DataType<double>::type, data);
+			Mat X2 = Mat(3, 1,  DataType<double>::type, data1);
+			
 			equal = isEqual(listH[j], hFound);
-			if (equal) {
+			
+			if (norm(hFound*X - X2) < SEUIL_NORME && equal) {
 				votes[j]++;
+				//cout << norm(hFound*X - X2) << endl;
 			}
+			
+			
 		}
 		if(!equal) {
 			listH.push_back(hFound);
 			votes.push_back(1);
 		}	
 	}
-	cout << votes.size() << endl;
-	return H;
+	int indexMax, max = 0;
+	for(unsigned int i = 0; i < votes.size(); i++) {
+		//cout << i  << " : "<< votes[i] << endl;
+		if (votes[i] > max) {
+			max = votes[i];
+			indexMax = i;
+		}
+	}
+	//cout << listH[indexMax] << endl;
+	return listH[indexMax];
 }
 
 
@@ -350,7 +450,8 @@ int main(int argc, char** argv){
 		//V = vt.t();
 		
 		//Mat hFound = getHomography(getA(getRandomMatches(matches)));
-		getBestHomography(matches);
+		
+		
 		
 		//Mat w;
 		//cv::SVD::compute(svdMat, w);
@@ -369,25 +470,34 @@ int main(int argc, char** argv){
 		}
 		Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
 		//cout <<  imageOut.rows << endl;
-		//cout <<  imageOut.cols << endl;
+		cout <<  h << endl;
+		
+		Mat myH = getBestHomography(matches);
+		
+		cout <<  myH << endl;
+		//return 0;
+		//h = myH;
+		
+    // Warp source image to destination based on homography
+    //warpPerspective(imageIn2, pano, h, imageIn1.size());
+		
 		int decalageTop = 300;
-		/*for( int x = 0; x < imageIn1.rows; x++ ) {
-			for( int y = 0; y < imageIn1.cols; y++ ) {
-				pano.at<uchar>(x + decalageTop, y) = imageIn1.at<uchar>(x, y);
-			}
-		}*/
 		
 		for( int x = 0; x < imageIn1.rows; x++ ) {
 			for( int y = 0; y < imageIn1.cols; y++ ) {
 				
 				double data[3] = { x, y, 1 };
 				Mat X = Mat(3, 1, h.type(), data);
+				
 				Mat X2 = h*X;
+				
 				double scale = X2.at<double>(0, 2);
 				
 				int val = imageIn1.at<uchar>(x, y);
 				int newX = (int) X2.at<double>(0, 0)/scale;
 				int newY = (int) X2.at<double>(0, 1)/scale;
+				
+				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
 				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
 				//cout << "Point 1: " << endl;
 				//cout << "x : " << x << " y : " <<  y << endl;
@@ -400,6 +510,7 @@ int main(int argc, char** argv){
 				//pano.at<uchar>(newX+ decalageTop, newY) = val;
 				//pano.at<uchar>(newX + decalageTop, newY) = val;
 				pano.at<uchar>(x + decalageTop, y) = val;
+				//pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y ) = val;
 			}
 		}
 		for( int x = 0; x < imageIn2.rows; x++ ) {
@@ -407,8 +518,16 @@ int main(int argc, char** argv){
 				
 				double data[3] = { x, y, 1 };
 				Mat X = Mat(3, 1, h.type(), data);
+				cout << "h" << endl;
+				cout << h << endl;
+				cout << "x" << endl;
+				cout << X << endl;
+				cout << "h*x" << endl;
+				cout << h*X << endl;
 				Mat X2 = h*X;
 				double scale = X2.at<double>(0, 2);
+				
+				//cout << X2 << endl;
 				
 				int val = imageIn2.at<uchar>(x, y);
 				//Mat lin_polar_img;
@@ -418,11 +537,25 @@ int main(int argc, char** argv){
 				//linearPolar(imageIn2, pano, center, M, 0);
 				//cout << lin_polar_img << endl;
 				//return 0;
+				
+				
+
+
+			//cout << "X2" << endl;
+			//cout << X2 << endl;
+			//cout << Point2f(X2.at<double>(0, 0)/X2.at<double>(0, 2), X2.at<double>(0, 1)/X2.at<double>(0, 2)) << endl;
+			
+				
+				
 				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
+				//cout << "X*H" << endl;
+			Mat xH = h*X;
+			//cout << newPoint << endl;
+			//cout << Point2f(xH.at<double>(0, 0)/xH.at<double>(0, 2), xH.at<double>(0, 1)/xH.at<double>(0, 2)) << endl;
 				//return 0;
 				
-				int newX = (int) X2.at<double>(0, 0)/scale;
-				int newY = (int) X2.at<double>(0, 1)/scale;
+				//int newX = (int) X2.at<double>(0, 0)/scale;
+				//int newY = (int) X2.at<double>(0, 1)/scale;
 				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
 				//cout << "Point : " << endl;
 				//cout << "x : " << x << " y : " <<  y << endl;
@@ -435,59 +568,10 @@ int main(int argc, char** argv){
 				//pano.at<uchar>(newX+ decalageTop , newY + decalage) = val;
 				//pano.at<uchar>(newX+ decalageTop , newY ) = val;
 				pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y ) = val;
-				//pano.at<uchar>(x+ decalageTop , y +160) = val;
+				//pano.at<uchar>(x+ decalageTop , y) = val;
 			}
 		}
-		/*for( int x = 0; x < imageOut2.rows; x++ ) {
-			for( int y = 0; y < decalage; y++ ) {
-				
-				double data[3] = { x, y, 1 };
-				Mat X = Mat(3, 1, h.type(), data);
-				Mat X2 = h*X;
-				double scale = X2.at<double>(0, 2);
-				
-				int val = imageOut2.at<uchar>(x, y);
-				int newX = (int) X2.at<double>(0, 0)/scale;
-				int newY = (int) X2.at<double>(0, 1)/scale;
-				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
-				//cout << "Point : " << endl;
-				//cout << "x : " << x << " y : " <<  y << endl;
-				//cout << "x : " << newX << " y : " <<  newY << endl;
-				//if (newX > 0 && newY > 0){
-				//	pano.at<uchar>(newX , newY ) = val;
-				//}
-				//pano.at<uchar>(newX + decalageTop, newY + decalage) = val;
-				//pano.at<uchar>(newX+ decalageTop +140, newY + 160) = val;
-				//pano.at<uchar>(newX+ decalageTop , newY + decalage) = val;
-				//pano.at<uchar>(newX+ decalageTop , newY ) = val;
-				pano.at<uchar>(newX+ decalageTop , newY ) = val;
-			}
-		}
-		for( int x = 0; x < imageOut2.rows; x++ ) {
-			for( int y = decalage; y < imageOut2.cols; y++ ) {
-				
-				double data[3] = { x, y, 1 };
-				Mat X = Mat(3, 1, h.type(), data);
-				Mat X2 = h*X;
-				double scale = X2.at<double>(0, 2);
-				
-				int val = imageOut2.at<uchar>(x, y);
-				int newX = (int) X2.at<double>(0, 0)/scale;
-				int newY = (int) X2.at<double>(0, 1)/scale;
-				//cout << "x : " << (int) X2.at<double>(0, 0) << " y : " << (int) X2.at<double>(0, 1) << endl;
-				//cout << "Point : " << endl;
-				//cout << "x : " << x << " y : " <<  y << endl;
-				//cout << "x : " << newX << " y : " <<  newY << endl;
-				//if (newX > 0 && newY > 0){
-				//	pano.at<uchar>(newX , newY ) = val;
-				//}
-				//pano.at<uchar>(newX + decalageTop, newY + decalage) = val;
-				//pano.at<uchar>(newX+ decalageTop +140, newY + 160) = val;
-				//pano.at<uchar>(newX+ decalageTop , newY + decalage) = val;
-				pano.at<uchar>(newX+ decalageTop , newY ) = val;
-				//pano.at<uchar>(x+ decalageTop , y ) = val;
-			}
-		}*/
+		
 		
 		 
 		// Mat pano;
