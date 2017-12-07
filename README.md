@@ -5,4 +5,4 @@ Programme permettant de fusionner 2 images.
 ## ReadMe
 * Executer `cmake .` _(Dans le répertoire courant)_
  * Executer `make`
- * Executer `bin/main test.png`
+ * Executer `bin/main set1-1.png set1-2.png`
