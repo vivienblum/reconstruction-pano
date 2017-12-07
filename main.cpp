@@ -315,6 +315,35 @@ bool isCoordInImage(Mat image, Point2i newPoint, int decalageTop = 0, int decala
 	return newPoint.x + decalageTop > 0 && newPoint.x + decalageTop  < image.rows && newPoint.y + decalageWidth > 0 && newPoint.y + decalageWidth < image.cols;
 }
 
+/* Fonction pour afficher les matchs */
+void showImagePano(Mat &imageOut, Mat src, Mat h, int decalageTop = 0, int decalageWidth = 0, bool wrapped = false ) {
+	for( int x = 0; x < src.rows; x++ ) {
+		for( int y = 0; y < src.cols; y++ ) {
+			if (wrapped) {
+		
+				double data[3] = { x, y, 1 };
+				Mat X = Mat(3, 1, h.type(), data);
+				
+				Mat X2 = h*X;
+				double scale = X2.at<double>(0, 2);	
+				
+				int val = src.at<uchar>(x, y);
+				
+				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
+
+				if (isCoordInImage(imageOut, newPoint, decalageTop, decalageWidth)) {
+					imageOut.at<uchar>(newPoint.x+ decalageTop , newPoint.y+decalageWidth) = val;
+				}
+			}
+			else {
+				int val = src.at<uchar>(x, y);
+				imageOut.at<uchar>(x + decalageTop, y+decalageWidth) = val;
+			}
+			
+		}
+	}
+}
+
 int main(int argc, char** argv){
 	vector <Mat> images;
 	for (int i = 1; i < argc; i++) {
@@ -366,7 +395,7 @@ int main(int argc, char** argv){
 	int decalageWidth = 100;
 	
 	// On affiche la 1ère image dans la pano
-	for( int x = 0; x < images[0].rows; x++ ) {
+	/*for( int x = 0; x < images[0].rows; x++ ) {
 		for( int y = 0; y < images[0].cols; y++ ) {
 			int val = images[0].at<uchar>(x, y);
 			pano.at<uchar>(x + decalageTop, y+decalageWidth) = val;
@@ -391,7 +420,10 @@ int main(int argc, char** argv){
 			}
 			
 		}
-	}
+	}*/
+	
+	showImagePano(pano, images[0], h, decalageTop, decalageWidth);
+	showImagePano(pano, images[1], h, decalageTop, decalageWidth, true);
 	
 	showCorners(imageOut, v1);
 	showCorners(imageOut, v2, decalage);
