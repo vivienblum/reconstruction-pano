@@ -354,7 +354,7 @@ int main(int argc, char** argv){
 	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
 	
 	//Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
-	Mat pano = Mat::zeros(Size(width+decalage+200, imageIn1.rows+400), imageIn1.type());
+	Mat pano = Mat::zeros(Size(width+decalage, imageIn1.rows+300), imageIn1.type());
 
 	srand(time(NULL));
 	
@@ -387,11 +387,25 @@ int main(int argc, char** argv){
 		/* TEST pour homography */
 		vector<Point2i> pts_src;
 		vector<Point2i> pts_dst;
-		for(unsigned int i = 0; i < matches.size(); i++) {
-			pts_src.push_back(matches[i][0]);
-			pts_dst.push_back(matches[i][1]);
+		int cpt = 0;
+		for(unsigned int i = 0; i < matches.size() && cpt < matches.size(); i++, cpt++) {
+			cout << "match" << endl;
+			cout << matches[i][0] << endl;
+			cout << matches[i][1] << endl;
+			//pts_src.push_back(matches[i][0]);
+			//pts_dst.push_back(matches[i][1]);
+			pts_src.push_back(Point2i(matches[i][0].y, matches[i][0].x));
+			pts_dst.push_back(Point2i(matches[i][1].y, matches[i][1].x));
 		}
-		Mat h = findHomography( pts_src, pts_dst, CV_RANSAC );
+		cout << pts_src.size() << endl;
+		cout << pts_dst.size() << endl;
+		//showCorners(imageOut, pts_src);
+		//showCorners(imageOut, pts_dst, decalage);
+		Mat h = findHomography( pts_dst, pts_src, CV_RANSAC );
+		
+		Mat imageOut2;
+		
+		warpPerspective(imageIn2,imageOut2,h, pano.size() );
 		
 		/* My HOMOGRAPHY */
 		Mat myH = getBestHomography(matches);
@@ -401,17 +415,17 @@ int main(int argc, char** argv){
 		
 		//h = myH;
 		
-		int decalageTop = 300;
+		int decalageTop = 200;
 		
 		for( int x = 0; x < imageIn1.rows; x++ ) {
 			for( int y = 0; y < imageIn1.cols; y++ ) {
 				
-				//double data[3] = { x, y, 1 };
-				//Mat X = Mat(3, 1, h.type(), data);
+				double data[3] = { x, y, 1 };
+				Mat X = Mat(3, 1, h.type(), data);
 				
-				//Mat X2 = h*X;
+				Mat X2 = h*X;
 				
-				//double scale = X2.at<double>(0, 2);
+				double scale = X2.at<double>(0, 2);
 				
 				int val = imageIn1.at<uchar>(x, y);
 				//int newX = (int) X2.at<double>(0, 0)/scale;
@@ -420,8 +434,10 @@ int main(int argc, char** argv){
 				//Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
 
 				pano.at<uchar>(x + decalageTop, y) = val;
+				//pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
 			}
 		}
+		
 		for( int x = 0; x < imageIn2.rows; x++ ) {
 			for( int y = 0; y < imageIn2.cols; y++ ) {
 				
@@ -434,16 +450,25 @@ int main(int argc, char** argv){
 				int val = imageIn2.at<uchar>(x, y);
 				
 				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
+				//cout << X2 << endl;
+				if (newPoint.x+ decalageTop > 0 && newPoint.x+ decalageTop  < pano.rows && newPoint.y > 0 && newPoint.y < pano.cols) {
+					pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
+				}
 				
-				pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
 			}
 		}
+		/*vector<Point2i> left_image;
+		
+		left_image.push_back(Point2i(int(0),int(0)));
+		left_image.push_back(Point2i(int(0),int(imageIn2.rows)));
+		left_image.push_back(Point2i(int(imageIn2.cols),int(imageIn2.rows)));
+		left_image.push_back(Point2i(int(imageIn2.cols),int(0)));*/
 
-		// showCorners(imageOut, v1);
-		// showCorners(imageOut, v2, decalage);
+		//howCorners(imageOut, v1);
+		//showCorners(imageOut, v2, decalage);
 		//showMatches(imageOut, matches, decalage);
 
-		//imshow( "Lines", imageOut );  
+		//imshow( "Lines", imageOut2 );  
 		imshow( "Pano", pano );  
 
 		waitKey(0); 
