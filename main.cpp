@@ -311,6 +311,7 @@ Point2i getPointInterPol(double x, double y) {
 	return point;
 }
 
+/*  Fonction pour vérifier qu'un point est affichable sur une image */
 bool isCoordInImage(Mat image, Point2i newPoint, int decalageTop = 0, int decalageWidth = 0) {
 	return newPoint.x + decalageTop > 0 && newPoint.x + decalageTop  < image.rows && newPoint.y + decalageWidth > 0 && newPoint.y + decalageWidth < image.cols;
 }
@@ -355,25 +356,32 @@ int main(int argc, char** argv){
 	
 	int width = images[0].cols + images[1].cols;
 	int decalage = images[0].cols;
-
-	/*Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );	//	TODO change
-	Mat imageOut = Mat::zeros(Size(width, images[0].rows), imageCorners.type());
-	Mat imageOutMatches = Mat::zeros(Size(width, images[0].rows), imageCorners.type());*/
 	
 	Mat pano = Mat::zeros(Size(width+100, images[0].rows+100), images[0].type());
 
 	srand(time(NULL));
-
-	//On crée un image contenant les 2 images
-	/*hconcat(images[0], images[1], imageOut);
-	hconcat(images[0], images[1], imageOutMatches);
-	cvtColor(imageOut, imageOut, CV_GRAY2RGB);
-	cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);*/
 	
 	int decalageTop = 100;
 	int decalageWidth = 100;
 		
 	for(unsigned int k = 0; k < images.size() - 1; k++) {
+		Mat h = Mat::zeros(Size(3, 3), DataType<float>::type);
+		
+		if (k == 0) {
+			showImagePano(pano, images[k], h, decalageTop, decalageWidth);
+		}
+		
+		/** AFFICHAGE IMAGE **/
+		Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
+		Mat imageOut;
+		Mat imageOutMatches;
+		
+		//On crée une image contenant les 2 images
+		hconcat(images[k], images[k+1], imageOut);
+		hconcat(images[k], images[k+1], imageOutMatches);
+		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
+		cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);
+		
 		vector<Point2i> v1 = MY_FAST(images[k]);
 		vector<Point2i> v2 = MY_FAST(images[k+1]);
 		
@@ -381,50 +389,27 @@ int main(int argc, char** argv){
 
 		vector<Point2i> pts_src;
 		vector<Point2i> pts_dst;
-		int cpt = 0;
-		for(unsigned int i = 0; i < matches.size() && cpt < matches.size(); i++, cpt++) {
+		for(unsigned int i = 0; i < matches.size(); i++) {
 			pts_src.push_back(Point2i(matches[i][0].y, matches[i][0].x));
 			pts_dst.push_back(Point2i(matches[i][1].y, matches[i][1].x));
 		}
 
-		Mat h = findHomography( pts_dst, pts_src, CV_RANSAC );
+		h = findHomography( pts_dst, pts_src, CV_RANSAC );
 		
-		showImagePano(pano, images[k], h, decalageTop, decalageWidth);
+		/* Non optimal */
+		//h = getBestHomography(matches);
+		
 		showImagePano(pano, images[k+1], h, decalageTop, decalageWidth, true);
-	}
+		
+		showCorners(imageOut, v1);
+		showCorners(imageOut, v2, decalage);
+		showMatches(imageOutMatches, matches, decalage);
 
-	// On récupère les points de corners des 2 images avec MY_FAST
-	/*vector<Point2i> v1 = MY_FAST(images[0]);
-	vector<Point2i> v2 = MY_FAST(images[1]);
-	
-	vector<vector<Point2i> > matches = getMatches(images[0], images[1], v1, v2);
-
-	vector<Point2i> pts_src;
-	vector<Point2i> pts_dst;
-	int cpt = 0;
-	for(unsigned int i = 0; i < matches.size() && cpt < matches.size(); i++, cpt++) {
-		pts_src.push_back(Point2i(matches[i][0].y, matches[i][0].x));
-		pts_dst.push_back(Point2i(matches[i][1].y, matches[i][1].x));
-	}
-
-	Mat h = findHomography( pts_dst, pts_src, CV_RANSAC );
-	
-	int decalageTop = 100;
-	int decalageWidth = 100;
-	
-	
-	showImagePano(pano, images[0], h, decalageTop, decalageWidth);
-	showImagePano(pano, images[1], h, decalageTop, decalageWidth, true);*/
-	
-	//showCorners(imageOut, v1);
-	//showCorners(imageOut, v2, decalage);
-	//showMatches(imageOutMatches, matches, decalage);
-
-	//imshow( "Corners", imageOut );
-	//imshow( "Matches", imageOutMatches );  
+		imshow( "Corners"+ k, imageOut );
+		imshow( "Matches"+ k, imageOutMatches ); 
+	} 
 	imshow( "Pano", pano );  
 
 	waitKey(0); 
-
 }
 
