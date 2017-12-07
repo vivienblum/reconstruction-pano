@@ -186,29 +186,7 @@ Mat getA(vector<vector<Point2i> > matches) {
 	Mat A = Mat::zeros(Size(9, matches.size()*2), DataType<double>::type);
 
 	// On parcourt les lignes
-	for( int x = 0, i = 0; x < A.rows; x+=2, i++ ) { 
-		// On construit la 1ère ligne
-		/*A.at<uchar>(x, 0) = matches[i][0].x;	// xn
-		A.at<uchar>(x, 1) = matches[i][0].y;	// yn
-		A.at<uchar>(x, 2) = 1;	// 1
-		A.at<uchar>(x, 3) = 0;	// 0
-		A.at<uchar>(x, 4) = 0;	// 0
-		A.at<uchar>(x, 5) = 0;	// 0
-		A.at<uchar>(x, 6) = -matches[i][1].x*matches[i][0].x;	// -xn'xn
-		A.at<uchar>(x, 7) = -matches[i][1].x*matches[i][0].y;	// -xn'yn
-		A.at<uchar>(x, 8) = -matches[i][1].x;	// -xn'
-
-		// On construit la 2ème ligne
-		A.at<uchar>(x + 1, 0) = 0;	// 0
-		A.at<uchar>(x + 1, 1) = 0;	// 0
-		A.at<uchar>(x + 1, 2) = 0;	// 0
-		A.at<uchar>(x + 1, 3) = matches[i][0].x;	// xn
-		A.at<uchar>(x + 1, 4) = matches[i][0].y;	// yn
-		A.at<uchar>(x + 1, 5) = 1;	// 1
-		A.at<uchar>(x + 1, 6) = -matches[i][1].y*matches[i][0].x;	// -yn'xn
-		A.at<uchar>(x + 1, 7) = -matches[i][1].y*matches[i][0].y;	// -yn'yn
-		A.at<uchar>(x + 1, 8) = -matches[i][1].y;	// -yn'*/
-		
+	for( int x = 0, i = 0; x < A.rows; x+=2, i++ ) { 		
 		// On construit la 1ère ligne
 		A.at<double>(x, 0) = -1*matches[i][0].x;	// -xn
 		A.at<double>(x, 1) = -matches[i][0].y;	// -yn
@@ -253,26 +231,20 @@ Mat constructH(Mat lastV) {
 	return H;
 }
 
-/* Fonction qui compare 2 matrices */
-bool isEqual(Mat A, Mat B, double seuil = SEUIL_HOMO) {
-	//cout << (sum(A != B) == Scalar(0,0,0,0)) << endl;
-	//cout << A << endl;
-	//cout << B << endl;
-	
+/* Fonction qui compare 2 matrices avec un seuil */
+bool isEqual(Mat A, Mat B, double seuil = SEUIL_HOMO) {	
 	bool equal = true;
 	for( int x = 0; x < A.rows && equal; x++ ) {
 		for( int y = 0; y < A.cols && equal; y++ ) {
-			//cout << A.at<double>(x, y) << endl;
 			if(!(A.at<double>(x, y) < B.at<double>(x, y) + seuil && A.at<double>(x, y) > B.at<double>(x, y) - seuil)) {
 				equal = false;
 			}
 		}
 	}
-
 	return equal;
 }
 
-/* Fonction getHomography */
+/* Fonction qui calcule la matrice homographique à partir de A (avec le SVD) */
 Mat getHomography(Mat A) {
 	Mat w, u, vt, V, lastC;
 	
@@ -285,17 +257,17 @@ Mat getHomography(Mat A) {
 
 /* Fonction qui récupère la meilleur homography */
 Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
-	//Mat H;
 	vector<Mat> listH;
 	vector<int> votes;
 	for(int i = 0; i < limit; i++) {
+		//On récupère 4 matches aléatoires
 		vector<vector<Point2i> > randomMatches = getRandomMatches(matches);
+		//On calcule la matrice homographique
 		Mat hFound = getHomography(getA(randomMatches));
 		
 		bool equal = false;
-		for(unsigned int j = 0; j < listH.size() && !equal; j++) {	
-			//Point2f x(randomMatches[0][0].x, randomMatches[0][0].y);
-			//Point2f x1(randomMatches[0][1].x, randomMatches[0][1].y);
+		//On vérifie qu'il n'existe pas déjà une matrice H proche
+		for(unsigned int j = 0; j < listH.size() && !equal; j++) {
 			
 			double data[3] = { randomMatches[0][0].x, randomMatches[0][0].y, 1 };
 			double data1[3] = { randomMatches[0][1].x, randomMatches[0][1].y, 1 };
@@ -316,7 +288,6 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 	}
 	int indexMax, max = 0;
 	for(unsigned int i = 0; i < votes.size(); i++) {
-		//cout << i  << " : "<< votes[i] << endl;
 		if (votes[i] > max) {
 			max = votes[i];
 			indexMax = i;
@@ -324,7 +295,6 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 	}
 	return listH[indexMax];
 }
-
 
 /* Fonction qui renvoie le point par l'interpolation bilinéaire */
 Point2i getPointInterPol(double x, double y) {
@@ -352,9 +322,9 @@ int main(int argc, char** argv){
 	int decalage = imageIn1.cols;
 
 	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
+	Mat imageOutMatches = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
 	
-	//Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
-	Mat pano = Mat::zeros(Size(width+decalage, imageIn1.rows+300), imageIn1.type());
+	Mat pano = Mat::zeros(Size(width, imageIn1.rows+100), imageIn1.type());
 
 	srand(time(NULL));
 	
@@ -366,7 +336,9 @@ int main(int argc, char** argv){
 
 		//On crée un image contenant les 2 images
 		hconcat(imageIn1, imageIn2, imageOut);
+		hconcat(imageIn1, imageIn2, imageOutMatches);
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
+		cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);
 
 		// On récupère les points de corners des 2 images avec MY_FAST
 		vector<Point2i> v1 = MY_FAST(imageIn1);
@@ -409,13 +381,14 @@ int main(int argc, char** argv){
 		
 		/* My HOMOGRAPHY */
 		Mat myH = getBestHomography(matches);
+		//Mat myH = getBestHomography(pts_dst, pts_src);
 		
 		cout << h << endl;
 		cout << myH << endl;
 		
 		//h = myH;
 		
-		int decalageTop = 200;
+		int decalageTop = 100;
 		
 		for( int x = 0; x < imageIn1.rows; x++ ) {
 			for( int y = 0; y < imageIn1.cols; y++ ) {
@@ -457,18 +430,13 @@ int main(int argc, char** argv){
 				
 			}
 		}
-		/*vector<Point2i> left_image;
 		
-		left_image.push_back(Point2i(int(0),int(0)));
-		left_image.push_back(Point2i(int(0),int(imageIn2.rows)));
-		left_image.push_back(Point2i(int(imageIn2.cols),int(imageIn2.rows)));
-		left_image.push_back(Point2i(int(imageIn2.cols),int(0)));*/
+		showCorners(imageOut, v1);
+		showCorners(imageOut, v2, decalage);
+		showMatches(imageOutMatches, matches, decalage);
 
-		//howCorners(imageOut, v1);
-		//showCorners(imageOut, v2, decalage);
-		//showMatches(imageOut, matches, decalage);
-
-		//imshow( "Lines", imageOut2 );  
+		//imshow( "Corners", imageOut );
+		//imshow( "Matches", imageOutMatches );  
 		imshow( "Pano", pano );  
 
 		waitKey(0); 
