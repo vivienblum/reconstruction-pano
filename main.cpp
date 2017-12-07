@@ -312,51 +312,48 @@ Point2i getPointInterPol(double x, double y) {
 }
 
 int main(int argc, char** argv){
+	vector <Mat> images;
+	for (int i = 1; i < argc; i++) {
+		images.push_back(imread(argv[i], CV_LOAD_IMAGE_GRAYSCALE));
+		if(!images[i].data ) {
+			cout <<  "Could not open or find the image" << argv[i] << endl ;
+			return -1;
+		}
+	}
 	
-	Mat imageIn1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
-	Mat imageIn2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
+	//Mat imageIn1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
+	//Mat imageIn2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
 
-	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
+	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );	//	TODO change
 
-	int width = imageIn1.cols + imageIn2.cols;
-	int decalage = imageIn1.cols;
+	int width = images[0].cols + images[1].cols;
+	int decalage = images[0].cols;
 
-	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
-	Mat imageOutMatches = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
+	Mat imageOut = Mat::zeros(Size(width, images[0].rows), imageCorners.type());
+	Mat imageOutMatches = Mat::zeros(Size(width, images[0].rows), imageCorners.type());
 	
-	Mat pano = Mat::zeros(Size(width, imageIn1.rows+100), imageIn1.type());
+	Mat pano = Mat::zeros(Size(width, images[0].rows+100), images[0].type());
 
 	srand(time(NULL));
 	
-	if(! imageIn1.data ) {
-		cout <<  "Could not open or find the image" << endl ;
-		return -1;
-   	}
-	else {
+	//if(! imageIn1.data ) {
+	//	cout <<  "Could not open or find the image" << endl ;
+	//	return -1;
+   //	}
+	//else {
 
 		//On crée un image contenant les 2 images
-		hconcat(imageIn1, imageIn2, imageOut);
-		hconcat(imageIn1, imageIn2, imageOutMatches);
+		hconcat(images[0], images[1], imageOut);
+		hconcat(images[0], images[1], imageOutMatches);
 		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
 		cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);
 
 		// On récupère les points de corners des 2 images avec MY_FAST
-		vector<Point2i> v1 = MY_FAST(imageIn1);
-		vector<Point2i> v2  = MY_FAST(imageIn2);
+		vector<Point2i> v1 = MY_FAST(images[0]);
+		vector<Point2i> v2  = MY_FAST(images[1]);
+		
+		vector<vector<Point2i> > matches = getMatches(images[0], images[1], v1, v2);
 
-		// On récupère les points de corners des 2 image avec FAST
-		vector<KeyPoint> v1Fast;
-		FAST(imageIn1, v1Fast, SEUIL, true);
-		vector<KeyPoint> v2Fast;
-		FAST(imageIn2, v2Fast, SEUIL, true);
-
-		cout <<  "Left, MY_FAST : " << v1.size() <<  " FAST : " << v1Fast.size() << endl;
-		cout <<  "Right, MY_FAST : " << v2.size() <<  " FAST : " << v2Fast.size() << endl;
-
-		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
-
-		// cout << getA(getRandomMatches(matches)) << endl;
-		/* TEST pour homography */
 		vector<Point2i> pts_src;
 		vector<Point2i> pts_dst;
 		int cpt = 0;
@@ -375,55 +372,31 @@ int main(int argc, char** argv){
 		//showCorners(imageOut, pts_dst, decalage);
 		Mat h = findHomography( pts_dst, pts_src, CV_RANSAC );
 		
-		Mat imageOut2;
-		
-		warpPerspective(imageIn2,imageOut2,h, pano.size() );
-		
-		/* My HOMOGRAPHY */
-		Mat myH = getBestHomography(matches);
-		//Mat myH = getBestHomography(pts_dst, pts_src);
-		
-		cout << h << endl;
-		cout << myH << endl;
-		
-		//h = myH;
+		//Mat myH = getBestHomography(matches);
 		
 		int decalageTop = 100;
 		
-		for( int x = 0; x < imageIn1.rows; x++ ) {
-			for( int y = 0; y < imageIn1.cols; y++ ) {
-				
-				double data[3] = { x, y, 1 };
-				Mat X = Mat(3, 1, h.type(), data);
-				
-				Mat X2 = h*X;
-				
-				double scale = X2.at<double>(0, 2);
-				
-				int val = imageIn1.at<uchar>(x, y);
-				//int newX = (int) X2.at<double>(0, 0)/scale;
-				//int newY = (int) X2.at<double>(0, 1)/scale;
-				
-				//Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-
+		// On affiche la 1ère image dans la pano
+		for( int x = 0; x < images[0].rows; x++ ) {
+			for( int y = 0; y < images[0].cols; y++ ) {
+				int val = images[0].at<uchar>(x, y);
 				pano.at<uchar>(x + decalageTop, y) = val;
-				//pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
 			}
 		}
 		
-		for( int x = 0; x < imageIn2.rows; x++ ) {
-			for( int y = 0; y < imageIn2.cols; y++ ) {
-				
+		// On affiche la 2ème image dans la pano
+		for( int x = 0; x < images[1].rows; x++ ) {
+			for( int y = 0; y < images[1].cols; y++ ) {			
 				double data[3] = { x, y, 1 };
 				Mat X = Mat(3, 1, h.type(), data);
 				
 				Mat X2 = h*X;
 				double scale = X2.at<double>(0, 2);	
 				
-				int val = imageIn2.at<uchar>(x, y);
+				int val = images[1].at<uchar>(x, y);
 				
 				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-				//cout << X2 << endl;
+
 				if (newPoint.x+ decalageTop > 0 && newPoint.x+ decalageTop  < pano.rows && newPoint.y > 0 && newPoint.y < pano.cols) {
 					pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
 				}
@@ -440,7 +413,7 @@ int main(int argc, char** argv){
 		imshow( "Pano", pano );  
 
 		waitKey(0); 
-	} 
-	return 0;
+	//} 
+	//return 0;
 }
 
