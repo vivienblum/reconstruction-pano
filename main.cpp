@@ -186,29 +186,7 @@ Mat getA(vector<vector<Point2i> > matches) {
 	Mat A = Mat::zeros(Size(9, matches.size()*2), DataType<double>::type);
 
 	// On parcourt les lignes
-	for( int x = 0, i = 0; x < A.rows; x+=2, i++ ) { 
-		// On construit la 1ère ligne
-		/*A.at<uchar>(x, 0) = matches[i][0].x;	// xn
-		A.at<uchar>(x, 1) = matches[i][0].y;	// yn
-		A.at<uchar>(x, 2) = 1;	// 1
-		A.at<uchar>(x, 3) = 0;	// 0
-		A.at<uchar>(x, 4) = 0;	// 0
-		A.at<uchar>(x, 5) = 0;	// 0
-		A.at<uchar>(x, 6) = -matches[i][1].x*matches[i][0].x;	// -xn'xn
-		A.at<uchar>(x, 7) = -matches[i][1].x*matches[i][0].y;	// -xn'yn
-		A.at<uchar>(x, 8) = -matches[i][1].x;	// -xn'
-
-		// On construit la 2ème ligne
-		A.at<uchar>(x + 1, 0) = 0;	// 0
-		A.at<uchar>(x + 1, 1) = 0;	// 0
-		A.at<uchar>(x + 1, 2) = 0;	// 0
-		A.at<uchar>(x + 1, 3) = matches[i][0].x;	// xn
-		A.at<uchar>(x + 1, 4) = matches[i][0].y;	// yn
-		A.at<uchar>(x + 1, 5) = 1;	// 1
-		A.at<uchar>(x + 1, 6) = -matches[i][1].y*matches[i][0].x;	// -yn'xn
-		A.at<uchar>(x + 1, 7) = -matches[i][1].y*matches[i][0].y;	// -yn'yn
-		A.at<uchar>(x + 1, 8) = -matches[i][1].y;	// -yn'*/
-		
+	for( int x = 0, i = 0; x < A.rows; x+=2, i++ ) { 		
 		// On construit la 1ère ligne
 		A.at<double>(x, 0) = -1*matches[i][0].x;	// -xn
 		A.at<double>(x, 1) = -matches[i][0].y;	// -yn
@@ -253,26 +231,20 @@ Mat constructH(Mat lastV) {
 	return H;
 }
 
-/* Fonction qui compare 2 matrices */
-bool isEqual(Mat A, Mat B, double seuil = SEUIL_HOMO) {
-	//cout << (sum(A != B) == Scalar(0,0,0,0)) << endl;
-	//cout << A << endl;
-	//cout << B << endl;
-	
+/* Fonction qui compare 2 matrices avec un seuil */
+bool isEqual(Mat A, Mat B, double seuil = SEUIL_HOMO) {	
 	bool equal = true;
 	for( int x = 0; x < A.rows && equal; x++ ) {
 		for( int y = 0; y < A.cols && equal; y++ ) {
-			//cout << A.at<double>(x, y) << endl;
 			if(!(A.at<double>(x, y) < B.at<double>(x, y) + seuil && A.at<double>(x, y) > B.at<double>(x, y) - seuil)) {
 				equal = false;
 			}
 		}
 	}
-
 	return equal;
 }
 
-/* Fonction getHomography */
+/* Fonction qui calcule la matrice homographique à partir de A (avec le SVD) */
 Mat getHomography(Mat A) {
 	Mat w, u, vt, V, lastC;
 	
@@ -285,17 +257,17 @@ Mat getHomography(Mat A) {
 
 /* Fonction qui récupère la meilleur homography */
 Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
-	//Mat H;
 	vector<Mat> listH;
 	vector<int> votes;
 	for(int i = 0; i < limit; i++) {
+		//On récupère 4 matches aléatoires
 		vector<vector<Point2i> > randomMatches = getRandomMatches(matches);
+		//On calcule la matrice homographique
 		Mat hFound = getHomography(getA(randomMatches));
 		
 		bool equal = false;
-		for(unsigned int j = 0; j < listH.size() && !equal; j++) {	
-			//Point2f x(randomMatches[0][0].x, randomMatches[0][0].y);
-			//Point2f x1(randomMatches[0][1].x, randomMatches[0][1].y);
+		//On vérifie qu'il n'existe pas déjà une matrice H proche
+		for(unsigned int j = 0; j < listH.size() && !equal; j++) {
 			
 			double data[3] = { randomMatches[0][0].x, randomMatches[0][0].y, 1 };
 			double data1[3] = { randomMatches[0][1].x, randomMatches[0][1].y, 1 };
@@ -316,7 +288,6 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 	}
 	int indexMax, max = 0;
 	for(unsigned int i = 0; i < votes.size(); i++) {
-		//cout << i  << " : "<< votes[i] << endl;
 		if (votes[i] > max) {
 			max = votes[i];
 			indexMax = i;
@@ -324,7 +295,6 @@ Mat getBestHomography(vector<vector<Point2i> > matches, int limit = T) {
 	}
 	return listH[indexMax];
 }
-
 
 /* Fonction qui renvoie le point par l'interpolation bilinéaire */
 Point2i getPointInterPol(double x, double y) {
@@ -341,138 +311,105 @@ Point2i getPointInterPol(double x, double y) {
 	return point;
 }
 
-int main(int argc, char** argv){
-	
-	Mat imageIn1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
-	Mat imageIn2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
+/*  Fonction pour vérifier qu'un point est affichable sur une image */
+bool isCoordInImage(Mat image, Point2i newPoint, int decalageTop = 0, int decalageWidth = 0) {
+	return newPoint.x + decalageTop > 0 && newPoint.x + decalageTop  < image.rows && newPoint.y + decalageWidth > 0 && newPoint.y + decalageWidth < image.cols;
+}
 
-	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
-
-	int width = imageIn1.cols + imageIn2.cols;
-	int decalage = imageIn1.cols;
-
-	Mat imageOut = Mat::zeros(Size(width, imageIn1.rows), imageCorners.type());
-	
-	//Mat pano = Mat::zeros(Size(width, imageIn1.rows), imageIn1.type());
-	Mat pano = Mat::zeros(Size(width+decalage, imageIn1.rows+300), imageIn1.type());
-
-	srand(time(NULL));
-	
-	if(! imageIn1.data ) {
-		cout <<  "Could not open or find the image" << endl ;
-		return -1;
-   	}
-	else {
-
-		//On crée un image contenant les 2 images
-		hconcat(imageIn1, imageIn2, imageOut);
-		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
-
-		// On récupère les points de corners des 2 images avec MY_FAST
-		vector<Point2i> v1 = MY_FAST(imageIn1);
-		vector<Point2i> v2  = MY_FAST(imageIn2);
-
-		// On récupère les points de corners des 2 image avec FAST
-		vector<KeyPoint> v1Fast;
-		FAST(imageIn1, v1Fast, SEUIL, true);
-		vector<KeyPoint> v2Fast;
-		FAST(imageIn2, v2Fast, SEUIL, true);
-
-		cout <<  "Left, MY_FAST : " << v1.size() <<  " FAST : " << v1Fast.size() << endl;
-		cout <<  "Right, MY_FAST : " << v2.size() <<  " FAST : " << v2Fast.size() << endl;
-
-		vector<vector<Point2i> > matches = getMatches(imageIn1, imageIn2, v1, v2);
-
-		// cout << getA(getRandomMatches(matches)) << endl;
-		/* TEST pour homography */
-		vector<Point2i> pts_src;
-		vector<Point2i> pts_dst;
-		int cpt = 0;
-		for(unsigned int i = 0; i < matches.size() && cpt < matches.size(); i++, cpt++) {
-			cout << "match" << endl;
-			cout << matches[i][0] << endl;
-			cout << matches[i][1] << endl;
-			//pts_src.push_back(matches[i][0]);
-			//pts_dst.push_back(matches[i][1]);
-			pts_src.push_back(Point2i(matches[i][0].y, matches[i][0].x));
-			pts_dst.push_back(Point2i(matches[i][1].y, matches[i][1].x));
-		}
-		cout << pts_src.size() << endl;
-		cout << pts_dst.size() << endl;
-		//showCorners(imageOut, pts_src);
-		//showCorners(imageOut, pts_dst, decalage);
-		Mat h = findHomography( pts_dst, pts_src, CV_RANSAC );
-		
-		Mat imageOut2;
-		
-		warpPerspective(imageIn2,imageOut2,h, pano.size() );
-		
-		/* My HOMOGRAPHY */
-		Mat myH = getBestHomography(matches);
-		
-		cout << h << endl;
-		cout << myH << endl;
-		
-		//h = myH;
-		
-		int decalageTop = 200;
-		
-		for( int x = 0; x < imageIn1.rows; x++ ) {
-			for( int y = 0; y < imageIn1.cols; y++ ) {
-				
-				double data[3] = { x, y, 1 };
-				Mat X = Mat(3, 1, h.type(), data);
-				
-				Mat X2 = h*X;
-				
-				double scale = X2.at<double>(0, 2);
-				
-				int val = imageIn1.at<uchar>(x, y);
-				//int newX = (int) X2.at<double>(0, 0)/scale;
-				//int newY = (int) X2.at<double>(0, 1)/scale;
-				
-				//Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-
-				pano.at<uchar>(x + decalageTop, y) = val;
-				//pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
-			}
-		}
-		
-		for( int x = 0; x < imageIn2.rows; x++ ) {
-			for( int y = 0; y < imageIn2.cols; y++ ) {
-				
+/* Fonction pour afficher une image dans la pano */
+void showImagePano(Mat &imageOut, Mat src, Mat h, int decalageTop = 0, int decalageWidth = 0, bool wrapped = false ) {
+	for( int x = 0; x < src.rows; x++ ) {
+		for( int y = 0; y < src.cols; y++ ) {
+			int val = src.at<uchar>(x, y);
+			if (wrapped) {
 				double data[3] = { x, y, 1 };
 				Mat X = Mat(3, 1, h.type(), data);
 				
 				Mat X2 = h*X;
 				double scale = X2.at<double>(0, 2);	
 				
-				int val = imageIn2.at<uchar>(x, y);
+				int val = src.at<uchar>(x, y);
 				
 				Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-				//cout << X2 << endl;
-				if (newPoint.x+ decalageTop > 0 && newPoint.x+ decalageTop  < pano.rows && newPoint.y > 0 && newPoint.y < pano.cols) {
-					pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y) = val;
+
+				if (isCoordInImage(imageOut, newPoint, decalageTop, decalageWidth)) {
+					imageOut.at<uchar>(newPoint.x+ decalageTop , newPoint.y+decalageWidth) = val;
 				}
-				
 			}
+			else {
+				imageOut.at<uchar>(x + decalageTop, y+decalageWidth) = val;
+			}
+			
 		}
-		/*vector<Point2i> left_image;
+	}
+}
+
+int main(int argc, char** argv){
+	vector <Mat> images;
+	for (int i = 1; i < argc; i++) {
+		images.push_back(imread(argv[i], CV_LOAD_IMAGE_GRAYSCALE));
+		if(!images[i].data ) {
+			cout <<  "Could not open or find the image" << argv[i] << endl ;
+			return -1;
+		}
+	}
+	
+	int width = images[0].cols + images[1].cols;
+	int decalage = images[0].cols;
+	
+	Mat pano = Mat::zeros(Size(width+100, images[0].rows+100), images[0].type());
+
+	srand(time(NULL));
+	
+	int decalageTop = 100;
+	int decalageWidth = 100;
 		
-		left_image.push_back(Point2i(int(0),int(0)));
-		left_image.push_back(Point2i(int(0),int(imageIn2.rows)));
-		left_image.push_back(Point2i(int(imageIn2.cols),int(imageIn2.rows)));
-		left_image.push_back(Point2i(int(imageIn2.cols),int(0)));*/
+	for(unsigned int k = 0; k < images.size() - 1; k++) {
+		Mat h = Mat::zeros(Size(3, 3), DataType<float>::type);
+		
+		if (k == 0) {
+			showImagePano(pano, images[k], h, decalageTop, decalageWidth);
+		}
+		
+		/** AFFICHAGE IMAGE **/
+		Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );
+		Mat imageOut;
+		Mat imageOutMatches;
+		
+		//On crée une image contenant les 2 images
+		hconcat(images[k], images[k+1], imageOut);
+		hconcat(images[k], images[k+1], imageOutMatches);
+		cvtColor(imageOut, imageOut, CV_GRAY2RGB);
+		cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);
+		
+		vector<Point2i> v1 = MY_FAST(images[k]);
+		vector<Point2i> v2 = MY_FAST(images[k+1]);
+		
+		vector<vector<Point2i> > matches = getMatches(images[k], images[k+1], v1, v2);
 
-		//howCorners(imageOut, v1);
-		//showCorners(imageOut, v2, decalage);
-		//showMatches(imageOut, matches, decalage);
+		vector<Point2i> pts_src;
+		vector<Point2i> pts_dst;
+		for(unsigned int i = 0; i < matches.size(); i++) {
+			pts_src.push_back(Point2i(matches[i][0].y, matches[i][0].x));
+			pts_dst.push_back(Point2i(matches[i][1].y, matches[i][1].x));
+		}
 
-		//imshow( "Lines", imageOut2 );  
-		imshow( "Pano", pano );  
+		h = findHomography( pts_dst, pts_src, CV_RANSAC );
+		
+		/* Non optimal */
+		//h = getBestHomography(matches);
+		
+		showImagePano(pano, images[k+1], h, decalageTop, decalageWidth, true);
+		
+		showCorners(imageOut, v1);
+		showCorners(imageOut, v2, decalage);
+		showMatches(imageOutMatches, matches, decalage);
 
-		waitKey(0); 
+		imshow( "Corners"+ k, imageOut );
+		imshow( "Matches"+ k, imageOutMatches ); 
 	} 
-	return 0;
+	imshow( "Pano", pano );  
+
+	waitKey(0); 
 }
 
