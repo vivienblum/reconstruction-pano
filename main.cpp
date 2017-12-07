@@ -315,12 +315,12 @@ bool isCoordInImage(Mat image, Point2i newPoint, int decalageTop = 0, int decala
 	return newPoint.x + decalageTop > 0 && newPoint.x + decalageTop  < image.rows && newPoint.y + decalageWidth > 0 && newPoint.y + decalageWidth < image.cols;
 }
 
-/* Fonction pour afficher les matchs */
+/* Fonction pour afficher une image dans la pano */
 void showImagePano(Mat &imageOut, Mat src, Mat h, int decalageTop = 0, int decalageWidth = 0, bool wrapped = false ) {
 	for( int x = 0; x < src.rows; x++ ) {
 		for( int y = 0; y < src.cols; y++ ) {
+			int val = src.at<uchar>(x, y);
 			if (wrapped) {
-		
 				double data[3] = { x, y, 1 };
 				Mat X = Mat(3, 1, h.type(), data);
 				
@@ -336,7 +336,6 @@ void showImagePano(Mat &imageOut, Mat src, Mat h, int decalageTop = 0, int decal
 				}
 			}
 			else {
-				int val = src.at<uchar>(x, y);
 				imageOut.at<uchar>(x + decalageTop, y+decalageWidth) = val;
 			}
 			
@@ -354,30 +353,49 @@ int main(int argc, char** argv){
 		}
 	}
 	
-	//Mat imageIn1 = imread( argv[1], CV_LOAD_IMAGE_GRAYSCALE );
-	//Mat imageIn2 = imread( argv[2], CV_LOAD_IMAGE_GRAYSCALE );
-
-	Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );	//	TODO change
-
 	int width = images[0].cols + images[1].cols;
 	int decalage = images[0].cols;
 
+	/*Mat imageCorners = imread( argv[1], CV_LOAD_IMAGE_COLOR );	//	TODO change
 	Mat imageOut = Mat::zeros(Size(width, images[0].rows), imageCorners.type());
-	Mat imageOutMatches = Mat::zeros(Size(width, images[0].rows), imageCorners.type());
+	Mat imageOutMatches = Mat::zeros(Size(width, images[0].rows), imageCorners.type());*/
 	
 	Mat pano = Mat::zeros(Size(width+100, images[0].rows+100), images[0].type());
 
 	srand(time(NULL));
 
 	//On crée un image contenant les 2 images
-	hconcat(images[0], images[1], imageOut);
+	/*hconcat(images[0], images[1], imageOut);
 	hconcat(images[0], images[1], imageOutMatches);
 	cvtColor(imageOut, imageOut, CV_GRAY2RGB);
-	cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);
+	cvtColor(imageOutMatches, imageOutMatches, CV_GRAY2RGB);*/
+	
+	int decalageTop = 100;
+	int decalageWidth = 100;
+		
+	for(unsigned int k = 0; k < images.size() - 1; k++) {
+		vector<Point2i> v1 = MY_FAST(images[k]);
+		vector<Point2i> v2 = MY_FAST(images[k+1]);
+		
+		vector<vector<Point2i> > matches = getMatches(images[k], images[k+1], v1, v2);
+
+		vector<Point2i> pts_src;
+		vector<Point2i> pts_dst;
+		int cpt = 0;
+		for(unsigned int i = 0; i < matches.size() && cpt < matches.size(); i++, cpt++) {
+			pts_src.push_back(Point2i(matches[i][0].y, matches[i][0].x));
+			pts_dst.push_back(Point2i(matches[i][1].y, matches[i][1].x));
+		}
+
+		Mat h = findHomography( pts_dst, pts_src, CV_RANSAC );
+		
+		showImagePano(pano, images[k], h, decalageTop, decalageWidth);
+		showImagePano(pano, images[k+1], h, decalageTop, decalageWidth, true);
+	}
 
 	// On récupère les points de corners des 2 images avec MY_FAST
-	vector<Point2i> v1 = MY_FAST(images[0]);
-	vector<Point2i> v2  = MY_FAST(images[1]);
+	/*vector<Point2i> v1 = MY_FAST(images[0]);
+	vector<Point2i> v2 = MY_FAST(images[1]);
 	
 	vector<vector<Point2i> > matches = getMatches(images[0], images[1], v1, v2);
 
@@ -394,40 +412,13 @@ int main(int argc, char** argv){
 	int decalageTop = 100;
 	int decalageWidth = 100;
 	
-	// On affiche la 1ère image dans la pano
-	/*for( int x = 0; x < images[0].rows; x++ ) {
-		for( int y = 0; y < images[0].cols; y++ ) {
-			int val = images[0].at<uchar>(x, y);
-			pano.at<uchar>(x + decalageTop, y+decalageWidth) = val;
-		}
-	}
-	
-	// On affiche la 2ème image dans la pano
-	for( int x = 0; x < images[1].rows; x++ ) {
-		for( int y = 0; y < images[1].cols; y++ ) {			
-			double data[3] = { x, y, 1 };
-			Mat X = Mat(3, 1, h.type(), data);
-			
-			Mat X2 = h*X;
-			double scale = X2.at<double>(0, 2);	
-			
-			int val = images[1].at<uchar>(x, y);
-			
-			Point2i newPoint = getPointInterPol(X2.at<double>(0, 0)/scale, X2.at<double>(0, 1)/scale);
-
-			if (isCoordInImage(pano, newPoint, decalageTop, decalageWidth)) {
-				pano.at<uchar>(newPoint.x+ decalageTop , newPoint.y+decalageWidth) = val;
-			}
-			
-		}
-	}*/
 	
 	showImagePano(pano, images[0], h, decalageTop, decalageWidth);
-	showImagePano(pano, images[1], h, decalageTop, decalageWidth, true);
+	showImagePano(pano, images[1], h, decalageTop, decalageWidth, true);*/
 	
-	showCorners(imageOut, v1);
-	showCorners(imageOut, v2, decalage);
-	showMatches(imageOutMatches, matches, decalage);
+	//showCorners(imageOut, v1);
+	//showCorners(imageOut, v2, decalage);
+	//showMatches(imageOutMatches, matches, decalage);
 
 	//imshow( "Corners", imageOut );
 	//imshow( "Matches", imageOutMatches );  
